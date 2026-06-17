@@ -1,0 +1,67 @@
+'use client';
+
+import React from 'react';
+import type { Message } from '@/lib/types';
+import CitationPill from './CitationPill';
+import StreamingDots from './StreamingDots';
+
+interface MessageBubbleProps {
+  message: Message;
+}
+
+export default function MessageBubble({ message }: MessageBubbleProps) {
+  const isUser = message.role === 'user';
+
+  if (isUser) {
+    return (
+      <div className="mb-3 flex animate-fade-in justify-end">
+        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-teal-primary px-4 py-3 text-sm leading-relaxed text-white shadow-sm">
+          {message.content}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-3 flex animate-fade-in items-start">
+      <div className="max-w-[85%]">
+        <div className="rounded-2xl rounded-bl-md border border-warm-border bg-white px-4 py-3 shadow-sm">
+          <p className="text-sm leading-relaxed text-warm-gray whitespace-pre-wrap">
+            {message.content}
+            {message.status === 'streaming' && !message.content && (
+              <span className="text-muted-warm italic">Thinking...</span>
+            )}
+          </p>
+
+          {/* Streaming indicator */}
+          {message.status === 'streaming' && message.content && (
+            <StreamingDots />
+          )}
+
+          {/* Inline citation pills */}
+          {message.citations.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5 border-t border-warm-border/50 pt-2.5">
+              {message.citations.map((c) => (
+                <CitationPill key={c.index} citation={c} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Error banner */}
+        {message.status === 'error' && message.errorMessage && (
+          <div className="mt-2 rounded-xl border border-red-200 bg-error-bg px-3 py-2 text-xs text-error-red">
+            {message.errorMessage}
+          </div>
+        )}
+
+        {/* Warning banner */}
+        {message.warningMessage && (
+          <div className="mt-2 rounded-xl border border-amber-200 bg-warning-bg px-3 py-2 text-xs text-amber-dark">
+            {message.warningMessage}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
