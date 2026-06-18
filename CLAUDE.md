@@ -80,3 +80,8 @@ Citation post-processing: normalise markers + filter unused citations
 - **Logging:** Structured with `[request_id]` column via context var. Every `logger.info/warning` call is traceable.
 - **Pycache:** Always run `find backend -type d -name __pycache__ -exec rm -rf {} +` after code changes before restarting uvicorn — stale bytecode is a common trap.
 - **Python deps:** Always activate the venv (`source backend/.venv/bin/activate`) before running tests or the server.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
