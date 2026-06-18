@@ -169,4 +169,3 @@ All APIs are free with no API key required.
 
 ## License
 
-MIT
