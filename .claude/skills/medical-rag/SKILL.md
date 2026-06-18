@@ -19,7 +19,7 @@ This skill enforces the architectural constraints of the Medical Chatbot. Loaded
 ### Data Sources (Live APIs Only — No Keys Required)
 - **Wikipedia MediaWiki:** `en.wikipedia.org/w/api.php` — raw query search (no suffix bias), plain-text extracts. Requires `User-Agent` header.
 - **OpenFDA Drug Label:** `api.fda.gov/drug/label.json` — Rx + OTC field extraction, DailyMed URLs. No key.
-- **RxNav/RxNorm:** `rxnav.nlm.nih.gov/REST` — drug name → RxCUI normalisation via `rxcui?name=...&allsrc=0`. Requires `Accept: application/json`.
+- **RxNav/RxNorm:** Client exists at `rxnav_client.py` but is NOT wired in the pipeline (unwired 2026-06-18). Heuristic drug extraction from query + wiki text proved sufficient.
 - **NO local databases, NO vector stores, NO ChromaDB, NO FAISS, NO SQLite for document storage.** All retrieval is live from the web.
 
 ### Pipeline (Generative — No Classifier, No Hardcoded Prompt)
@@ -32,11 +32,11 @@ Drug extraction: heuristic — capitalized words + lowercase 5-15 char words fro
   ↓
 OpenFDA: concurrent drug label searches for extracted names
   ↓
-RxNav: normalise drug names, add brand alternatives
+Citation metadata: build citation list from Wiki articles + FDA results
   ↓
 Minimal prompt: context + "answer helpfully, cite [[CITATION:N]], include disclaimer"
   ↓
-Ollama qwen2.5:7b → SSE stream (token|citation|done|error|warning)
+Ollama qwen2.5:7b → SSE stream (token|citation|done|error|warning|info)
 ```
 
 ## Rules
@@ -67,16 +67,16 @@ Ollama qwen2.5:7b → SSE stream (token|citation|done|error|warning)
 - SSE connections must never hang — always emit `event: error` on failure before closing.
 
 ### Code Organization:
-- `backend/` — 10 Python modules:
+- `backend/` — 10 Python modules (8 active + 1 standby + 1 init):
   - `main.py` — FastAPI server (SSE streaming route with try/except guard)
   - `symptom_pipeline.py` — self-contained pipeline (prompt building, drug extraction, context formatting, streaming — all inline)
   - `wiki_client.py` — Wikipedia MediaWiki API (raw query search + extracts, no suffix bias)
   - `openfda_client.py` — OpenFDA drug label API (OTC + Rx field extraction)
-  - `rxnav_client.py` — RxNorm drug name normalisation + brand lookup
   - `config.py` — centralised configuration (endpoints, timeouts, model name, prompt limits)
   - `retry.py` — shared HTTP retry helper with Retry-After parsing
   - `session_store.py` — in-memory conversation history (6-turn window, 30-min TTL)
   - `logging_setup.py` — structured logging with request-ID injection via contextvar
+  - `rxnav_client.py` — RxNorm drug name normalisation (UNWIRED — not called by pipeline, kept for reference)
   - `__init__.py`
 - `frontend/` — Next.js 16 App Router + TypeScript + Tailwind CSS:
   - `hooks/` — `useChatController`, `useChatReducer` (13 actions), `useChatStream`, `useSessionStore`, `useScrollManager`
