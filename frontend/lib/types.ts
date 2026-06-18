@@ -2,7 +2,10 @@ export interface Citation {
   index: number;
   url: string;
   title: string;
-  source: 'pubmed' | 'fda';
+  source: 'wikipedia' | 'fda';
+  authors?: string;
+  year?: string | number;
+  journal?: string;
 }
 
 export type MessageStatus = 'streaming' | 'done' | 'error';
@@ -30,13 +33,14 @@ export type ChatAction =
   | { type: 'CREATE_ASSISTANT_MESSAGE' }
   | { type: 'APPEND_TOKEN'; text: string }
   | { type: 'ADD_CITATION'; citation: Citation }
-  | { type: 'SET_STREAMING_DONE' }
+  | { type: 'SET_STREAMING_DONE'; fullText?: string; citations?: Citation[] }
   | { type: 'SET_ERROR'; message: string }
   | { type: 'SET_WARNING'; message: string }
   | { type: 'SET_STATUS'; status: string }
   | { type: 'HIDE_STATUS' }
-  | { type: 'CLEAR_CHAT' }
-  | { type: 'LOAD_SESSION'; messages: Message[] };
+  | { type: 'CLEAR_CHAT'; sessionId?: string }
+  | { type: 'LOAD_SESSION'; messages: Message[]; sessionId?: string }
+  | { type: 'SET_SESSION_ID'; sessionId: string };
 
 export interface ChatState {
   messages: Message[];

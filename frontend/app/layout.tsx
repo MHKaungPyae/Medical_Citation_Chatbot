@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Medical Research Assistant',
+  title: 'Medical Symptom Checker',
   description:
-    'Evidence-based medical answers with citations from PubMed and FDA databases.',
+    'Describe your symptoms and get OTC medication suggestions with citations from Wikipedia Medical and FDA databases. Always consult a doctor.',
 };
 
 export default function RootLayout({

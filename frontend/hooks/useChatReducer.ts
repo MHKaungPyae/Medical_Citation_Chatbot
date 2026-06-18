@@ -58,6 +58,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
           ...last,
           content: last.content + action.text,
         };
+      } else {
+        console.warn('APPEND_TOKEN: no assistant message to append to');
       }
       return { ...state, messages };
     }
@@ -70,6 +72,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
           ...last,
           citations: [...last.citations, action.citation],
         };
+      } else {
+        console.warn('ADD_CITATION: no assistant message to add citation to');
       }
       return { ...state, messages };
     }
@@ -78,8 +82,18 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       const messages = [...state.messages];
       const last = messages[messages.length - 1];
       if (last && last.role === 'assistant') {
+        // Preserve accumulated citations if backend sent none/filtered.
+        // The backend may return empty citations when the model uses
+        // non-standard marker formats (e.g. [[CITATION N]] vs [[CITATION:N]]).
+        const backendCitations: Citation[] | undefined = action.citations;
+        const finalCitations: Citation[] =
+          backendCitations !== undefined && backendCitations.length > 0
+            ? backendCitations
+            : last.citations;
         messages[messages.length - 1] = {
           ...last,
+          ...(action.fullText !== undefined ? { content: action.fullText } : {}),
+          citations: finalCitations,
           status: 'done',
         };
       }
@@ -100,6 +114,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
           status: 'error',
           errorMessage: action.message,
         };
+      } else {
+        console.warn('SET_ERROR: no assistant message to attach error to');
       }
       return {
         ...state,
@@ -137,7 +153,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
 
     case 'CLEAR_CHAT': {
       return {
-        ...initialState(generateUUID()),
+        ...initialState(action.sessionId || state.sessionId),
       };
     }
 
@@ -145,6 +161,14 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         messages: action.messages,
+        ...(action.sessionId ? { sessionId: action.sessionId } : {}),
+      };
+    }
+
+    case 'SET_SESSION_ID': {
+      return {
+        ...state,
+        sessionId: action.sessionId,
       };
     }
 
@@ -181,7 +205,8 @@ export function useChatReducer(initialSessionId?: string) {
   );
 
   const setStreamingDone = useCallback(
-    () => dispatch({ type: 'SET_STREAMING_DONE' }),
+    (fullText?: string, citations?: Citation[]) =>
+      dispatch({ type: 'SET_STREAMING_DONE', fullText, citations }),
     []
   );
 
@@ -206,12 +231,18 @@ export function useChatReducer(initialSessionId?: string) {
   );
 
   const clearChat = useCallback(
-    () => dispatch({ type: 'CLEAR_CHAT' }),
+    (sessionId?: string) => dispatch({ type: 'CLEAR_CHAT', sessionId }),
     []
   );
 
   const loadSession = useCallback(
-    (messages: Message[]) => dispatch({ type: 'LOAD_SESSION', messages }),
+    (messages: Message[], sessionId?: string) =>
+      dispatch({ type: 'LOAD_SESSION', messages, sessionId }),
+    []
+  );
+
+  const setSessionId = useCallback(
+    (sessionId: string) => dispatch({ type: 'SET_SESSION_ID', sessionId }),
     []
   );
 
@@ -228,5 +259,6 @@ export function useChatReducer(initialSessionId?: string) {
     hideStatus,
     clearChat,
     loadSession,
+    setSessionId,
   };
 }

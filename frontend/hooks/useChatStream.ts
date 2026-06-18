@@ -10,7 +10,7 @@ interface UseChatStreamOptions {
   createAssistantMessage: () => void;
   appendToken: (text: string) => void;
   addCitation: (citation: Citation) => void;
-  setStreamingDone: () => void;
+  setStreamingDone: (fullText?: string, citations?: Citation[]) => void;
   setError: (message: string) => void;
   setWarning: (message: string) => void;
   setStatus: (status: string) => void;
@@ -95,7 +95,8 @@ export function useChatStream({
           if (done) break;
 
           buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
+          // Split on LF, strip trailing CR for CRLF line endings
+          const lines = buffer.split('\n').map((l) => l.replace(/\r$/, ''));
           buffer = lines.pop() || '';
 
           let currentEvent = '';
@@ -139,16 +140,26 @@ export function useChatStream({
               typeof data.title === 'string' &&
               typeof data.source === 'string'
             ) {
+              const source = data.source as string;
               addCitation({
                 index: data.index,
                 url: data.url,
                 title: data.title,
-                source: data.source as 'pubmed' | 'fda',
+                source: (source === 'wikipedia' || source === 'fda'
+                  ? source
+                  : 'wikipedia') as Citation['source'],
+                ...(typeof data.authors === 'string' ? { authors: data.authors } : {}),
+                ...(typeof data.year === 'string' || typeof data.year === 'number'
+                  ? { year: data.year } : {}),
+                ...(typeof data.journal === 'string' ? { journal: data.journal } : {}),
               });
             }
             break;
           case 'done':
-            setStreamingDone();
+            setStreamingDone(
+              typeof data.full_text === 'string' ? data.full_text : undefined,
+              Array.isArray(data.citations) ? (data.citations as Citation[]) : undefined
+            );
             break;
           case 'error':
             setError(
@@ -184,6 +195,5 @@ export function useChatStream({
   return {
     sendMessage,
     cancelStream,
-    isStreaming: isStreamingRef,
   };
 }

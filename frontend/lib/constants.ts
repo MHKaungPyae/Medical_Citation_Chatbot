@@ -5,21 +5,12 @@ export const EXAMPLE_QUESTIONS = [
 ];
 
 export const STATUS_MESSAGES = {
-  SEARCHING: 'Searching PubMed & OpenFDA...',
-  STREAMING: 'Generating response...',
-  SEARCHING_SLOW: 'Searching (this may take a moment)...',
+  SEARCHING: 'Searching medical information...',
 };
 
 export const ERROR_MESSAGES = {
-  TIMEOUT: 'The model took too long to respond. Please try again.',
   SERVER_DOWN: 'Could not reach the server. Please check your connection.',
   UNKNOWN: 'Something went wrong. Please try again.',
-  NON_MEDICAL: "Please ask a medical or drug-related question. I'm designed to search PubMed and FDA databases.",
-  NO_DATA: 'I could not find relevant medical literature or drug safety data on this topic.',
-};
-
-export const WARNING_MESSAGES = {
-  NO_LIVE_DATA: 'No live data found — response may be based on training data.',
 };
 
 export const STORAGE_KEYS = {

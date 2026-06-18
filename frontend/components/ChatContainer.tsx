@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import MessageList from './MessageList';
 import AutoExpandTextarea from './AutoExpandTextarea';
 import SendButton from './SendButton';
+import { useScrollManager } from '@/hooks/useScrollManager';
 import type { Message } from '@/lib/types';
 
 interface ChatContainerProps {
@@ -17,7 +18,7 @@ interface ChatContainerProps {
   onExampleClick: (question: string) => void;
 }
 
-export default function ChatContainer({
+function ChatContainer({
   messages,
   statusMessage,
   isStreaming,
@@ -27,35 +28,21 @@ export default function ChatContainer({
   onStop,
   onExampleClick,
 }: ChatContainerProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [userScrolledUp, setUserScrolledUp] = useState(false);
+  const {
+    scrollRef, userScrolledUp, setUserScrolledUp,
+    scrollToBottom, handleScroll,
+  } = useScrollManager();
 
-  const scrollToBottom = useCallback(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, []);
-
-  // Auto-scroll when messages change or tokens stream in
   useEffect(() => {
     if (!userScrolledUp) {
       scrollToBottom();
     }
   }, [messages, statusMessage, scrollToBottom, userScrolledUp]);
 
-  // Scroll detection: has the user manually scrolled up?
-  const handleScroll = useCallback(() => {
-    if (!scrollRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-    const isNearBottom = scrollHeight - scrollTop - clientHeight < 60;
-    setUserScrolledUp(!isNearBottom);
-  }, []);
-
   const isEmpty = messages.length === 0;
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      {/* Messages area */}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
@@ -67,13 +54,9 @@ export default function ChatContainer({
           onExampleClick={onExampleClick}
         />
 
-        {/* Scroll-to-bottom button */}
         {userScrolledUp && (
           <button
-            onClick={() => {
-              scrollToBottom();
-              setUserScrolledUp(false);
-            }}
+            onClick={() => { scrollToBottom(); setUserScrolledUp(false); }}
             className="sticky bottom-4 mx-auto flex items-center gap-1.5 rounded-full
                        border border-warm-border bg-white px-4 py-2 text-xs text-muted-warm
                        shadow-md transition-all hover:text-warm-gray"
@@ -87,8 +70,7 @@ export default function ChatContainer({
         )}
       </div>
 
-      {/* Input area */}
-      <div className="sticky bottom-0 border-t border-warm-border bg-white/80 backdrop-blur-sm px-4 py-3">
+      <div className="sticky bottom-0 bg-white/80 backdrop-blur-sm px-4 py-3">
         <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border border-warm-border bg-white px-4 py-1 shadow-sm">
           <AutoExpandTextarea
             value={inputValue}
@@ -110,3 +92,5 @@ export default function ChatContainer({
     </div>
   );
 }
+
+export default React.memo(ChatContainer);

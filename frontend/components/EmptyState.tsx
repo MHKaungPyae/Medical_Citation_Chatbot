@@ -16,8 +16,8 @@ export default function EmptyState({ onExampleClick }: EmptyStateProps) {
           Medical Research Assistant
         </h2>
         <p className="mb-6 text-sm leading-relaxed text-muted-warm">
-          I search PubMed and FDA databases to give you cited, evidence-based
-          medical answers. Every claim comes with a clickable source.
+          I search Wikipedia Medical and FDA databases to give you cited,
+          evidence-based medical answers. Every claim comes with a clickable source.
         </p>
         <div className="flex flex-wrap justify-center gap-2">
           {EXAMPLE_QUESTIONS.map((q) => (

@@ -3,6 +3,7 @@
 import React from 'react';
 import type { Message } from '@/lib/types';
 import CitationPill from './CitationPill';
+import { renderTextWithCitations } from './InlineCitation';
 import StreamingDots from './StreamingDots';
 
 interface MessageBubbleProps {
@@ -22,12 +23,20 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
     );
   }
 
+  // Always parse [[CITATION:N]] markers into clickable inline links.
+  // During streaming, citations from the 'citation' SSE events are used.
+  // When done, the backend-filtered citations (only actually used ones) replace them.
+  const renderedContent =
+    message.content && message.citations.length > 0
+      ? renderTextWithCitations(message.content, message.citations)
+      : message.content;
+
   return (
     <div className="mb-3 flex animate-fade-in items-start">
       <div className="max-w-[85%]">
         <div className="rounded-2xl rounded-bl-md border border-warm-border bg-white px-4 py-3 shadow-sm">
           <p className="text-sm leading-relaxed text-warm-gray whitespace-pre-wrap">
-            {message.content}
+            {renderedContent}
             {message.status === 'streaming' && !message.content && (
               <span className="text-muted-warm italic">Thinking...</span>
             )}
@@ -38,8 +47,8 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             <StreamingDots />
           )}
 
-          {/* Inline citation pills */}
-          {message.citations.length > 0 && (
+          {/* Citation pills shown only when done and citations exist */}
+          {message.status === 'done' && message.citations.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5 border-t border-warm-border/50 pt-2.5">
               {message.citations.map((c) => (
                 <CitationPill key={c.index} citation={c} />

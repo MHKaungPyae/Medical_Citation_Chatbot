@@ -1,12 +1,16 @@
 'use client';
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState } from 'react';
 import type { Session, Message } from '@/lib/types';
 import { STORAGE_KEYS } from '@/lib/constants';
 import { generateUUID, truncateTitle } from '@/lib/utils';
 
+// ── localStorage helpers ──────────────────────────────────────────────────
+
+const isClient = typeof window !== 'undefined';
+
 function loadSessions(): Session[] {
-  if (typeof window === 'undefined') return [];
+  if (!isClient) return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.SESSIONS);
     return raw ? JSON.parse(raw) : [];
@@ -16,7 +20,7 @@ function loadSessions(): Session[] {
 }
 
 function saveSessions(sessions: Session[]) {
-  if (typeof window === 'undefined') return;
+  if (!isClient) return;
   try {
     localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
   } catch {
@@ -25,30 +29,26 @@ function saveSessions(sessions: Session[]) {
 }
 
 function loadActiveSessionId(): string {
-  if (typeof window === 'undefined') return generateUUID();
+  if (!isClient) return generateUUID();
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.ACTIVE_SESSION);
-    return raw || generateUUID();
+    return localStorage.getItem(STORAGE_KEYS.ACTIVE_SESSION) || generateUUID();
   } catch {
     return generateUUID();
   }
 }
 
 function saveActiveSessionId(id: string) {
-  if (typeof window === 'undefined') return;
+  if (!isClient) return;
   try {
     localStorage.setItem(STORAGE_KEYS.ACTIVE_SESSION, id);
   } catch {}
 }
 
 export function useSessionStore() {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string>('');
-
-  useEffect(() => {
-    setSessions(loadSessions());
-    setActiveSessionId(loadActiveSessionId());
-  }, []);
+  // Initialize state directly from localStorage in the useState initializer —
+  // no useEffect-based async load that would race with useChatController.
+  const [sessions, setSessions] = useState<Session[]>(loadSessions);
+  const [activeSessionId, setActiveSessionId] = useState<string>(loadActiveSessionId);
 
   const updateSessionInStore = useCallback(
     (sessionId: string, messages: Message[]) => {
@@ -95,8 +95,7 @@ export function useSessionStore() {
   const switchSession = useCallback((sessionId: string): Session | null => {
     setActiveSessionId(sessionId);
     saveActiveSessionId(sessionId);
-    const all = loadSessions();
-    return all.find((s) => s.id === sessionId) || null;
+    return loadSessions().find((s) => s.id === sessionId) || null;
   }, []);
 
   const deleteSession = useCallback((sessionId: string) => {

@@ -74,19 +74,21 @@ export default function Sidebar({
             </p>
           ) : (
             <div className="space-y-1">
-              {sessions
+              {[...sessions]
                 .sort((a, b) => b.updatedAt - a.updatedAt)
                 .map((session) => (
-                  <div
+                  <button
                     key={session.id}
                     onClick={() => onSwitchSession(session.id)}
-                    className={`group flex cursor-pointer items-center justify-between rounded-lg px-3 py-2.5
-                               text-sm transition-colors
+                    className={`group flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2.5
+                               text-sm transition-colors text-left
                                ${
                                  session.id === activeSessionId
                                    ? 'bg-teal-light text-teal-dark'
                                    : 'text-warm-gray hover:bg-cream-bg'
                                }`}
+                    aria-label={`${session.title} — ${formatTimestamp(session.updatedAt)}`}
+                    aria-current={session.id === activeSessionId ? 'true' : undefined}
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm">{session.title}</p>
@@ -94,7 +96,7 @@ export default function Sidebar({
                         {formatTimestamp(session.updatedAt)}
                       </p>
                     </div>
-                    <button
+                    <span
                       onClick={(e) => {
                         e.stopPropagation();
                         onDeleteSession(session.id);
@@ -104,15 +106,24 @@ export default function Sidebar({
                                  group-hover:opacity-100"
                       aria-label={`Delete conversation: ${session.title}`}
                       title="Delete conversation"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onDeleteSession(session.id);
+                        }
+                      }}
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                         <polyline points="3 6 5 6 21 6" />
                         <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
                         <line x1="10" y1="11" x2="10" y2="17" />
                         <line x1="14" y1="11" x2="14" y2="17" />
                       </svg>
-                    </button>
-                  </div>
+                    </span>
+                  </button>
                 ))}
             </div>
           )}

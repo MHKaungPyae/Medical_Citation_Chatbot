@@ -1,0 +1,398 @@
+"""Medical chatbot pipeline.
+
+Always fetches Wikipedia + OpenFDA context for every query, then streams
+an LLM response. No keyword classification, no hardcoded system prompt —
+the model handles everything generatively.
+"""
+
+import asyncio
+import json
+import logging
+import re
+import uuid
+from typing import AsyncGenerator
+
+import httpx
+
+from backend.config import MAX_PROMPT_WORDS, OLLAMA_MODEL, OLLAMA_TIMEOUT, OLLAMA_URL
+from backend.logging_setup import set_request_id
+from backend.openfda_client import search_openfda
+from backend.session_store import session_store
+from backend.wiki_client import get_wiki_extracts, search_wikipedia
+
+logger = logging.getLogger(__name__)
+
+# ── SSE formatting ──────────────────────────────────────────────────────────
+
+def _sse_event(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+# ── Ollama streaming ────────────────────────────────────────────────────────
+
+async def _stream_ollama(prompt: str) -> AsyncGenerator[tuple[str, dict], None]:
+    """Stream tokens from Ollama, yielding (event_type, data_dict) tuples."""
+    async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
+        try:
+            async with client.stream(
+                "POST",
+                OLLAMA_URL,
+                json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": True},
+            ) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if not line:
+                        continue
+                    try:
+                        chunk = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    token = chunk.get("response", "")
+                    if token:
+                        yield ("token", {"text": token})
+                    if chunk.get("done", False):
+                        break
+        except httpx.TimeoutException:
+            logger.error("Ollama request timed out")
+            yield ("error", {
+                "message": "The model took too long to respond. Please try again.",
+                "code": "TIMEOUT",
+            })
+        except httpx.ConnectError:
+            logger.error("Cannot connect to Ollama at %s", OLLAMA_URL)
+            yield ("error", {
+                "message": "Could not reach the model. Is Ollama running?",
+                "code": "CONNECTION_REFUSED",
+            })
+
+
+# ── citation post-processing ────────────────────────────────────────────────
+
+def _normalize_citation_markers(text: str) -> str:
+    text = re.sub(r"\[\s*(\d+)\s*\]", r"[[CITATION:\1]]", text)
+    text = re.sub(r"\(\s*(\d+)\s*\)", r"[[CITATION:\1]]", text)
+    text = re.sub(r"\[\[CITATION\s+(\d+)\]\]", r"[[CITATION:\1]]", text)
+    return text
+
+
+def _extract_citations(text: str) -> list[int]:
+    markers = re.findall(r"\[\[CITATION:(\d+)\]\]", text)
+    return sorted(set(int(n) for n in markers))
+
+
+# ── drug name extraction from text (heuristic, no keyword lists) ────────────
+
+# Words we skip when extracting potential drug names from Wiki text.
+_STOP_WORDS: frozenset[str] = frozenset({
+    "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
+    "have", "has", "had", "do", "does", "did", "will", "would", "could",
+    "should", "may", "might", "can", "shall", "to", "of", "in", "for",
+    "on", "with", "at", "by", "from", "as", "into", "through", "during",
+    "before", "after", "above", "below", "between", "under", "again",
+    "further", "then", "once", "here", "there", "when", "where", "why",
+    "how", "all", "both", "each", "few", "more", "most", "other", "some",
+    "such", "no", "nor", "not", "only", "own", "same", "so", "than",
+    "too", "very", "just", "because", "but", "and", "or", "if", "while",
+    "that", "this", "these", "those", "it", "its", "he", "she", "they",
+    "them", "their", "his", "her", "my", "your", "our", "we", "you",
+    "also", "about", "what", "which", "who", "whom", "without", "within",
+    "using", "used", "use", "due", "including", "include", "known",
+    "treatment", "symptoms", "medication", "dose", "mg", "effects",
+    "side", "clinical", "patients", "patient", "study", "studies",
+    "drug", "drugs", "medical", "medicine", "health", "disease",
+    "condition", "cause", "caused", "causes", "common", "blood",
+    "body", "pain", "cells", "cell", "system", "risk", "high", "low",
+    "severe", "mild", "acute", "chronic", "therapy", "one", "two",
+    "first", "new", "many", "often", "well", "however", "available",
+    "evidence", "data", "research", "reported", "found", "shown",
+    "significant", "important", "potential", "different", "several",
+    "number", "including", "years", "time", "day", "days",
+    "doses", "effect", "human", "history", "people", "person",
+    "oral", "topical", "injection", "tablet", "capsule", "typically",
+    "generally", "recommended", "followed", "necessary", "following",
+})
+
+
+def _extract_drug_names_from_text(text: str, extra: list[str] | None = None) -> list[str]:
+    """Heuristically extract potential drug/substance names from any text.
+
+    Returns up to 4 unique names. Works on both capitalized Wiki text and
+    lowercase user queries.
+    """
+    found: list[str] = []
+    seen: set[str] = set()
+
+    # Start with any explicit names passed in (e.g. from Wiki article titles)
+    for name in (extra or []):
+        name_lower = name.lower().strip()
+        if name_lower and name_lower not in seen and len(name_lower) > 2:
+            seen.add(name_lower)
+            found.append(name_lower)
+
+    # Pass 1: capitalized words (proper nouns in Wikipedia text)
+    for word in re.findall(r'\b[A-Z][a-z]{4,}(?:\s+[a-z]{3,})?\b', text):
+        word_lower = word.lower().strip()
+        if word_lower not in seen and word_lower not in _STOP_WORDS:
+            seen.add(word_lower)
+            found.append(word_lower)
+
+    # Pass 2: lowercase words 5+ chars (handles user queries like
+    # "paracetamol", "glucosamine" which are all lowercase)
+    for word in re.findall(r'\b[a-z]{5,15}\b', text.lower()):
+        if word not in seen and word not in _STOP_WORDS:
+            seen.add(word)
+            found.append(word)
+
+    return found[:4]
+
+
+# ── context formatting (inline — no prompts.py) ─────────────────────────────
+
+def _format_wiki_context(articles: list[dict], extracts: dict[int, str] | None = None) -> str:
+    """Format Wikipedia search results and extracts into a prompt-ready string."""
+    if not articles:
+        return ""
+
+    if extracts is None:
+        extracts = {}
+
+    lines: list[str] = []
+    for i, article in enumerate(articles, start=1):
+        pid = article.get("pageid", 0)
+        extract = extracts.get(pid, "")
+        title = article.get("title", "")
+
+        lines.append(
+            f"CITATION {i}: {title}\n"
+            f"Source: {article.get('url', '')}\n"
+        )
+        if extract:
+            words = extract.split()
+            if len(words) > 400:
+                extract = " ".join(words[:400]) + "…"
+            lines.append(f"Summary: {extract}\n")
+        elif article.get("snippet"):
+            lines.append(f"Summary: {article.get('snippet', '')}\n")
+        else:
+            lines.append("Summary: No extract available.\n")
+
+    return "\n".join(lines)
+
+
+def _format_fda_context(data: dict, citation_index: int = 0) -> str:
+    """Format OpenFDA drug label data into a prompt-ready string."""
+    if data.get("not_found"):
+        return ""
+
+    label = f"CITATION {citation_index}: " if citation_index > 0 else ""
+    lines = [f"{label}Drug: {data['drug_name']} (Source: FDA Drug Label)"]
+
+    if data.get("indications"):
+        lines.append(f"Indications: {data['indications']}")
+    if data.get("warnings"):
+        lines.append(f"Warnings: {data['warnings']}")
+    if data.get("side_effects"):
+        lines.append(f"Side Effects: {data['side_effects']}")
+    if data.get("contraindications"):
+        lines.append(f"Contraindications: {data['contraindications']}")
+    if data.get("dosage"):
+        lines.append(f"Dosage: {data['dosage']}")
+    if data.get("pregnancy"):
+        lines.append(f"Pregnancy/Breastfeeding: {data['pregnancy']}")
+
+    return "\n".join(lines)
+
+
+def _build_prompt(
+    user_query: str,
+    wiki_context: str = "",
+    fda_context: str = "",
+    conversation_history: str = "",
+) -> str:
+    """Build the full prompt for the LLM — minimal, no hardcoded behavior rules."""
+    parts: list[str] = []
+
+    # Conversation history
+    if conversation_history:
+        parts.append("## PREVIOUS CONVERSATION\n" + conversation_history + "\n")
+
+    # Context
+    if wiki_context:
+        parts.append("## WIKIPEDIA MEDICAL INFORMATION\n" + wiki_context + "\n")
+    if fda_context:
+        parts.append("## FDA DRUG LABEL INFORMATION\n" + fda_context + "\n")
+
+    if not wiki_context and not fda_context:
+        parts.append(
+            "No specific medical sources were found for this query. "
+            "Answer using your general medical knowledge.\n"
+        )
+
+    # User query
+    parts.append("## USER'S QUESTION\n" + user_query + "\n")
+
+    # Minimal guidance
+    parts.append(
+        "Answer the user's question helpfully using the provided context. "
+        "Be conversational, empathetic, and clear. "
+        "Reference sources with [[CITATION:N]] when using specific facts from the context. "
+        "Include a brief medical disclaimer."
+    )
+
+    prompt = "\n".join(parts)
+
+    word_count = len(prompt.split())
+    if word_count > MAX_PROMPT_WORDS:
+        logger.warning(
+            "Prompt is %d words (limit ~%d) — model may truncate context.",
+            word_count, MAX_PROMPT_WORDS,
+        )
+
+    return prompt
+
+
+# ── main entry point ────────────────────────────────────────────────────────
+
+async def run(query: str, session_id: str) -> AsyncGenerator[str, None]:
+    """Answer a medical question, yielding SSE events.
+
+    Always searches Wikipedia and OpenFDA regardless of query content.
+    No keyword classification — the model handles everything.
+    """
+    set_request_id(uuid.uuid4().hex[:8])
+    logger.info("Request: query=%r session=%s", query, session_id)
+
+    # ── Phase 1: Wikipedia (full query) ────────────────────────────────
+    wiki_articles = await search_wikipedia(query, max_results=3)
+    wiki_extracts: dict[int, str] = {}
+
+    if wiki_articles:
+        page_ids = [a["pageid"] for a in wiki_articles if a.get("pageid")]
+        wiki_extracts = await get_wiki_extracts(page_ids)
+
+    # ── Phase 2: Extract drug names ─────────────────────────────────────
+    # From the user's query itself (capitalized words = likely drug names)
+    query_drugs = _extract_drug_names_from_text(query)
+
+    # From Wiki text + article titles (if we found articles)
+    wiki_titles = [a.get("title", "") for a in wiki_articles]
+    all_wiki_text = " ".join(wiki_extracts.values())
+    wiki_drugs = _extract_drug_names_from_text(all_wiki_text, extra=wiki_titles)
+
+    # Merge: query drugs first, then wiki supplements
+    drug_names = list(dict.fromkeys(query_drugs + wiki_drugs))[:4]
+
+    logger.info("Extracted drug names: query=%s wiki=%s final=%s",
+                query_drugs, wiki_drugs, drug_names)
+
+    # If Wikipedia found nothing, try searching for the drug names directly
+    if not wiki_articles and drug_names:
+        for name in drug_names[:2]:
+            name_articles = await search_wikipedia(
+                f"{name} medication", max_results=2
+            )
+            for a in name_articles:
+                if a["pageid"] not in [wa.get("pageid") for wa in wiki_articles]:
+                    wiki_articles.append(a)
+        if wiki_articles:
+            page_ids = [a["pageid"] for a in wiki_articles if a.get("pageid")]
+            wiki_extracts = await get_wiki_extracts(page_ids)
+
+    # ── Phase 3: OpenFDA ────────────────────────────────────────────────
+    openfda_results: list[dict] = []
+    if drug_names:
+        tasks = [asyncio.create_task(search_openfda(name)) for name in drug_names]
+        results = await asyncio.gather(*tasks)
+        openfda_results = [r for r in results if r and not r.get("not_found")]
+
+    # ── Phase 4: Citation metadata ──────────────────────────────────────
+    citations: list[dict] = []
+    cite_index = 1
+
+    for article in wiki_articles:
+        citations.append({
+            "index": cite_index,
+            "url": article.get("url", ""),
+            "title": article.get("title", ""),
+            "source": "wikipedia",
+        })
+        cite_index += 1
+
+    for fda_result in openfda_results:
+        drug_name = fda_result.get("drug_name", "")
+        citations.append({
+            "index": cite_index,
+            "url": fda_result.get("source_url", ""),
+            "title": f"FDA Label: {drug_name}",
+            "source": "fda",
+            "drug_name": drug_name,
+        })
+        cite_index += 1
+
+    # ── Phase 6: Build prompt ───────────────────────────────────────────
+    wiki_context = _format_wiki_context(wiki_articles, wiki_extracts)
+
+    wiki_count = len(wiki_articles)
+    fda_parts: list[str] = []
+    for i, fda_result in enumerate(openfda_results):
+        ctx = _format_fda_context(fda_result, citation_index=wiki_count + i + 1)
+        if ctx:
+            fda_parts.append(ctx)
+    fda_context = "\n\n".join(fda_parts)
+
+    history = session_store.get_history(session_id) if session_id else ""
+
+    prompt = _build_prompt(
+        user_query=query,
+        wiki_context=wiki_context,
+        fda_context=fda_context,
+        conversation_history=history,
+    )
+
+    # ── Phase 7: Stream ─────────────────────────────────────────────────
+    full_text = ""
+
+    # 7a — citation metadata
+    for citation in citations:
+        yield _sse_event("citation", citation)
+
+    # 7b — info
+    if drug_names:
+        yield _sse_event("info", {
+            "message": f"Looked up information on: {', '.join(drug_names)}",
+        })
+
+    # 7c — warning if nothing found
+    if not wiki_articles and not openfda_results:
+        yield _sse_event("warning", {
+            "message": (
+                "Limited medical information found. "
+                "Please see a doctor for proper diagnosis."
+            ),
+        })
+
+    # 7d — token stream from Ollama
+    async for event_type, data in _stream_ollama(prompt):
+        yield _sse_event(event_type, data)
+        if event_type == "token":
+            full_text += data.get("text", "")
+
+    # 7e — citation post-processing + done
+    full_text = _normalize_citation_markers(full_text)
+    used_indices = _extract_citations(full_text)
+
+    yield _sse_event("done", {
+        "full_text": full_text,
+        "citations": [c for c in citations if c["index"] in used_indices],
+    })
+
+    # ── Phase 8: Persist conversation ───────────────────────────────────
+    if session_id:
+        session_store.save(session_id, "user", query)
+        session_store.save(session_id, "assistant", full_text)
+
+    logger.info(
+        "Response complete: tokens=%d citations=%d used=%d wiki=%d fda=%d",
+        len(full_text.split()), len(citations), len(used_indices),
+        len(wiki_articles), len(openfda_results),
+    )
