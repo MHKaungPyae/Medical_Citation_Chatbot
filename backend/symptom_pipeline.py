@@ -14,7 +14,7 @@ from typing import AsyncGenerator
 
 import httpx
 
-from backend.config import MAX_PROMPT_WORDS, OLLAMA_MODEL, OLLAMA_TIMEOUT, OLLAMA_URL
+from backend.config import ErrorCode, MAX_OUTPUT_TOKENS, MAX_PROMPT_WORDS, OLLAMA_MODEL, OLLAMA_TIMEOUT, OLLAMA_URL
 from backend.logging_setup import set_request_id
 from backend.openfda_client import search_openfda
 from backend.session_store import session_store
@@ -30,40 +30,69 @@ def _sse_event(event: str, data: dict) -> str:
 
 # ── Ollama streaming ────────────────────────────────────────────────────────
 
+_ollama_client: httpx.AsyncClient | None = None
+
+
+def _get_ollama_client() -> httpx.AsyncClient:
+    """Return a shared httpx.AsyncClient for Ollama requests."""
+    global _ollama_client
+    if _ollama_client is None:
+        _ollama_client = httpx.AsyncClient(timeout=OLLAMA_TIMEOUT)
+    return _ollama_client
+
+
+async def close_ollama_client() -> None:
+    """Close the shared Ollama client. Call on shutdown."""
+    global _ollama_client
+    if _ollama_client is not None:
+        await _ollama_client.aclose()
+        _ollama_client = None
+
+
 async def _stream_ollama(prompt: str) -> AsyncGenerator[tuple[str, dict], None]:
     """Stream tokens from Ollama, yielding (event_type, data_dict) tuples."""
-    async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
-        try:
-            async with client.stream(
-                "POST",
-                OLLAMA_URL,
-                json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": True},
-            ) as response:
-                response.raise_for_status()
-                async for line in response.aiter_lines():
-                    if not line:
-                        continue
-                    try:
-                        chunk = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    token = chunk.get("response", "")
-                    if token:
-                        yield ("token", {"text": token})
-                    if chunk.get("done", False):
+    client = _get_ollama_client()
+    try:
+        async with client.stream(
+            "POST",
+            OLLAMA_URL,
+            json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": True},
+        ) as response:
+            response.raise_for_status()
+            token_count = 0
+            async for line in response.aiter_lines():
+                if not line:
+                    continue
+                try:
+                    chunk = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                token = chunk.get("response", "")
+                if token:
+                    token_count += 1
+                    yield ("token", {"text": token})
+                    if token_count >= MAX_OUTPUT_TOKENS:
+                        logger.warning(
+                            "Ollama output capped at %d tokens", MAX_OUTPUT_TOKENS
+                        )
+                        yield ("warning", {
+                            "message": "Response was truncated due to length.",
+                        })
                         break
-        except httpx.TimeoutException:
-            logger.error("Ollama request timed out")
-            yield ("error", {
-                "message": "The model took too long to respond. Please try again.",
-                "code": "TIMEOUT",
-            })
-        except httpx.ConnectError:
-            logger.error("Cannot connect to Ollama at %s", OLLAMA_URL)
-            yield ("error", {
-                "message": "Could not reach the model. Is Ollama running?",
-                "code": "CONNECTION_REFUSED",
-            })
+                if chunk.get("done", False):
+                    break
+    except httpx.TimeoutException:
+        logger.error("Ollama request timed out")
+        yield ("error", {
+            "message": "The model took too long to respond. Please try again.",
+            "code": ErrorCode.TIMEOUT,
+        })
+    except httpx.ConnectError:
+        logger.error("Cannot connect to Ollama at %s", OLLAMA_URL)
+        yield ("error", {
+            "message": "Could not reach the model. Is Ollama running?",
+            "code": ErrorCode.CONNECTION_REFUSED,
+        })
 
 
 # ── citation post-processing ────────────────────────────────────────────────
@@ -130,15 +159,23 @@ def _extract_drug_names_from_text(text: str, extra: list[str] | None = None) -> 
             found.append(name_lower)
 
     # Pass 1: capitalized words (proper nouns in Wikipedia text)
-    for word in re.findall(r'\b[A-Z][a-z]{4,}(?:\s+[a-z]{3,})?\b', text):
+    # Capture 3+ char names (e.g. Advil, Xanax) and optional second word
+    for word in re.findall(r'\b[A-Z][a-z]{2,}(?:[-\s][a-z]{3,})*\b', text):
         word_lower = word.lower().strip()
         if word_lower not in seen and word_lower not in _STOP_WORDS:
             seen.add(word_lower)
             found.append(word_lower)
 
-    # Pass 2: lowercase words 5+ chars (handles user queries like
-    # "paracetamol", "glucosamine" which are all lowercase)
-    for word in re.findall(r'\b[a-z]{5,15}\b', text.lower()):
+    # Pass 2: all-caps abbreviations (e.g. OTC, NSAID, HRT)
+    for word in re.findall(r'\b[A-Z]{3,6}\b', text):
+        word_lower = word.lower()
+        if word_lower not in seen and word_lower not in _STOP_WORDS:
+            seen.add(word_lower)
+            found.append(word_lower)
+
+    # Pass 3: lowercase words 4+ chars (handles user queries like
+    # "aspirin", "paracetamol", "glucosamine")
+    for word in re.findall(r'\b[a-z]{4,15}\b', text.lower()):
         if word not in seen and word not in _STOP_WORDS:
             seen.add(word)
             found.append(word)
@@ -195,6 +232,8 @@ def _format_fda_context(data: dict, citation_index: int = 0) -> str:
         lines.append(f"Side Effects: {data['side_effects']}")
     if data.get("contraindications"):
         lines.append(f"Contraindications: {data['contraindications']}")
+    if data.get("drug_interactions"):
+        lines.append(f"Drug Interactions: {data['drug_interactions']}")
     if data.get("dosage"):
         lines.append(f"Dosage: {data['dosage']}")
     if data.get("pregnancy"):
@@ -228,8 +267,13 @@ def _build_prompt(
             "Answer using your general medical knowledge.\n"
         )
 
-    # User query
-    parts.append("## USER'S QUESTION\n" + user_query + "\n")
+    # User query — wrapped in delimiters to mitigate prompt injection
+    parts.append(
+        "## USER'S QUESTION\n"
+        "--- BEGIN USER INPUT ---\n"
+        + user_query +
+        "\n--- END USER INPUT ---\n"
+    )
 
     # Minimal guidance
     parts.append(
@@ -260,6 +304,10 @@ async def run(query: str, session_id: str) -> AsyncGenerator[str, None]:
     No keyword classification — the model handles everything.
     """
     set_request_id(uuid.uuid4().hex[:8])
+
+    # Sanitize session_id — only allow alphanumeric, hyphens, underscores
+    session_id = re.sub(r'[^a-zA-Z0-9_-]', '', session_id)[:128]
+
     logger.info("Request: query=%r session=%s", query, session_id)
 
     # ── Phase 1: Wikipedia (full query) ────────────────────────────────
@@ -287,12 +335,15 @@ async def run(query: str, session_id: str) -> AsyncGenerator[str, None]:
 
     # If Wikipedia found nothing, try searching for the drug names directly
     if not wiki_articles and drug_names:
+        existing_ids: set[int] = {a["pageid"] for a in wiki_articles if a.get("pageid")}
         for name in drug_names[:2]:
             name_articles = await search_wikipedia(
                 f"{name} medication", max_results=2
             )
             for a in name_articles:
-                if a["pageid"] not in [wa.get("pageid") for wa in wiki_articles]:
+                pid = a.get("pageid")
+                if pid and pid not in existing_ids:
+                    existing_ids.add(pid)
                     wiki_articles.append(a)
         if wiki_articles:
             page_ids = [a["pageid"] for a in wiki_articles if a.get("pageid")]
@@ -302,8 +353,11 @@ async def run(query: str, session_id: str) -> AsyncGenerator[str, None]:
     openfda_results: list[dict] = []
     if drug_names:
         tasks = [asyncio.create_task(search_openfda(name)) for name in drug_names]
-        results = await asyncio.gather(*tasks)
-        openfda_results = [r for r in results if r and not r.get("not_found")]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        openfda_results = [
+            r for r in results
+            if isinstance(r, dict) and not r.get("not_found")
+        ]
 
     # ── Phase 4: Citation metadata ──────────────────────────────────────
     citations: list[dict] = []
@@ -329,7 +383,7 @@ async def run(query: str, session_id: str) -> AsyncGenerator[str, None]:
         })
         cite_index += 1
 
-    # ── Phase 6: Build prompt ───────────────────────────────────────────
+    # ── Phase 5: Build prompt ───────────────────────────────────────────
     wiki_context = _format_wiki_context(wiki_articles, wiki_extracts)
 
     wiki_count = len(wiki_articles)
@@ -349,7 +403,7 @@ async def run(query: str, session_id: str) -> AsyncGenerator[str, None]:
         conversation_history=history,
     )
 
-    # ── Phase 7: Stream ─────────────────────────────────────────────────
+    # ── Phase 6: Stream ─────────────────────────────────────────────────
     full_text = ""
 
     # 7a — citation metadata
@@ -386,7 +440,7 @@ async def run(query: str, session_id: str) -> AsyncGenerator[str, None]:
         "citations": [c for c in citations if c["index"] in used_indices],
     })
 
-    # ── Phase 8: Persist conversation ───────────────────────────────────
+    # ── Phase 7: Persist conversation ───────────────────────────────────
     if session_id:
         session_store.save(session_id, "user", query)
         session_store.save(session_id, "assistant", full_text)

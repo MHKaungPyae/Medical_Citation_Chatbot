@@ -29,6 +29,8 @@ class SessionStore:
         self._ttl_seconds = ttl_seconds
         self._conversations: dict[str, list[dict]] = defaultdict(list)
         self._timestamps: dict[str, float] = {}
+        self._last_prune: float = 0.0
+        self._prune_interval: float = 60.0  # seconds between prune runs
 
     # -- public API ---------------------------------------------------------
 
@@ -39,7 +41,7 @@ class SessionStore:
         previously pruned).
         """
         self._touch(session_id)
-        self._prune()
+        self._maybe_prune()
 
         history = self._conversations.get(session_id, [])
         if not history:
@@ -58,10 +60,24 @@ class SessionStore:
         self._conversations[session_id].append({"role": role, "content": content})
         self._touch(session_id)
 
+    def reset(self) -> None:
+        """Clear all sessions. Useful in tests."""
+        self._conversations.clear()
+        self._timestamps.clear()
+        self._last_prune = 0.0
+
     # -- internals ----------------------------------------------------------
 
     def _touch(self, session_id: str) -> None:
         self._timestamps[session_id] = time.time()
+
+    def _maybe_prune(self) -> None:
+        """Prune expired sessions at most once per _prune_interval."""
+        now = time.time()
+        if now - self._last_prune < self._prune_interval:
+            return
+        self._last_prune = now
+        self._prune()
 
     def _prune(self) -> None:
         """Remove sessions that have not been touched in *ttl_seconds*."""

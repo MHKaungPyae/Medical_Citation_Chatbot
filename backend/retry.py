@@ -46,6 +46,7 @@ async def retry_get(
     label: str = "",
     max_retries: int = 3,
     delay: float = 1.0,
+    max_delay: float = 60.0,
 ) -> httpx.Response:
     """GET *url* with up to *max_retries* on transient errors.
 
@@ -76,7 +77,7 @@ async def retry_get(
                 # Parse Retry-After header when available (RFC 7231 §7.1.3)
                 retry_after = _parse_retry_after(exc.response)
                 if retry_after is not None:
-                    current_delay = retry_after
+                    current_delay = min(retry_after, max_delay)
                 elif exc.response.status_code == 429:
                     # No Retry-After header — use a 10 s floor for rate-limit
                     # windows that span minutes (Semantic Scholar free tier).
@@ -91,6 +92,8 @@ async def retry_get(
         if attempt < max_retries:
             logger.info("%s sleeping %.1fs before retry", label, current_delay)
             await asyncio.sleep(current_delay)
-            current_delay = max(current_delay * 2, delay)
+            current_delay = min(current_delay * 2, max_delay)
 
-    raise last_exc  # type: ignore[misc]
+    if last_exc is not None:
+        raise last_exc
+    raise httpx.HTTPError(f"retry_get failed after {max_retries} attempts: {label}")

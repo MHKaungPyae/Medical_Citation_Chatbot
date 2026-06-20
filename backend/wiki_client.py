@@ -35,6 +35,14 @@ def _get_client() -> httpx.AsyncClient:
     return _shared_client
 
 
+async def close_client() -> None:
+    """Close the shared client. Call on app shutdown."""
+    global _shared_client
+    if _shared_client is not None:
+        await _shared_client.aclose()
+        _shared_client = None
+
+
 async def search_wikipedia(query: str, max_results: int = WIKI_SEARCH_LIMIT) -> list[dict[str, Any]]:
     """Search Wikipedia for articles relevant to *query*.
 

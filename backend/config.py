@@ -28,11 +28,6 @@ WIKI_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
 WIKI_SEARCH_LIMIT = 3
 WIKI_EXTRACT_CHARS = 800  # intro extract length
 
-# ── RxNav (RxNorm) ────────────────────────────────────────────────────────
-
-RXNAV_BASE = "https://rxnav.nlm.nih.gov/REST"
-RXNAV_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
-
 # ── Session store ──────────────────────────────────────────────────────────
 
 MAX_HISTORY_TURNS = 6
@@ -43,3 +38,14 @@ SESSION_TTL_SECONDS = 1800  # 30 minutes
 # qwen2.5:7b has ~32K context.  We warn when the assembled prompt exceeds
 # ~6000 tokens (≈ 4500 words for medical English).
 MAX_PROMPT_WORDS = 4500
+
+# Max output tokens from Ollama (≈ 3000 words). Prevents runaway generations.
+MAX_OUTPUT_TOKENS = 4000
+
+# ── SSE error codes ───────────────────────────────────────────────────────
+
+class ErrorCode:
+    EMPTY_QUERY = "EMPTY_QUERY"
+    INTERNAL_ERROR = "INTERNAL_ERROR"
+    TIMEOUT = "TIMEOUT"
+    CONNECTION_REFUSED = "CONNECTION_REFUSED"

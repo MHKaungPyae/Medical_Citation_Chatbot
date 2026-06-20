@@ -32,11 +32,19 @@ class _RequestIdFilter(logging.Filter):
         return True
 
 
+_configured = False
+
+
 def setup_logging(level: int = logging.INFO) -> None:
     """Install the structured handler on the root logger.
 
-    Call once at startup (main.py does this on import).
+    Safe to call multiple times — only the first call installs handlers.
     """
+    global _configured
+    if _configured:
+        return
+    _configured = True
+
     handler = logging.StreamHandler()
     handler.addFilter(_RequestIdFilter())
     handler.setFormatter(logging.Formatter(

@@ -12,8 +12,11 @@ from urllib.parse import quote
 
 import httpx
 
-from backend.config import RXNAV_BASE, RXNAV_TIMEOUT
 from backend.retry import retry_get
+
+# Constants local to this module (unwired — kept for reference)
+RXNAV_BASE = "https://rxnav.nlm.nih.gov/REST"
+RXNAV_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
 
 logger = logging.getLogger(__name__)
 

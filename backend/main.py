@@ -3,12 +3,15 @@
 import json
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 
+from backend.config import ErrorCode
 from backend.logging_setup import setup_logging
-from backend.symptom_pipeline import run as run_symptom_pipeline
+from backend.symptom_pipeline import close_ollama_client, run as run_symptom_pipeline
+from backend.wiki_client import close_client as close_wiki_client
 
 logger = logging.getLogger(__name__)
 
@@ -25,20 +28,30 @@ app.add_middleware(
 )
 
 
+class ChatRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=2000, description="The user's medical question")
+    session_id: str = Field(default="", max_length=128, description="Session identifier")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await close_wiki_client()
+    await close_ollama_client()
+
+
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
 
 
 @app.post("/api/chat")
-async def chat(request: Request):
-    body = await request.json()
-    query = body.get("query", "").strip()
-    session_id = body.get("session_id", "")
+async def chat(body: ChatRequest):
+    query = body.query.strip()
+    session_id = body.session_id
 
     if not query:
         async def _empty():
-            yield f"event: error\ndata: {json.dumps({'message': 'Please provide a question.', 'code': 'EMPTY_QUERY'})}\n\n"
+            yield f"event: error\ndata: {json.dumps({'message': 'Please provide a question.', 'code': ErrorCode.EMPTY_QUERY})}\n\n"
         return StreamingResponse(_empty(), media_type="text/event-stream")
 
     async def _safe_stream():
@@ -47,7 +60,7 @@ async def chat(request: Request):
                 yield event
         except Exception:
             logger.exception("Unhandled error in symptom pipeline")
-            yield f"event: error\ndata: {json.dumps({'message': 'An internal error occurred. Please try again.', 'code': 'INTERNAL_ERROR'})}\n\n"
+            yield f"event: error\ndata: {json.dumps({'message': 'An internal error occurred. Please try again.', 'code': ErrorCode.INTERNAL_ERROR})}\n\n"
 
     return StreamingResponse(
         _safe_stream(),
