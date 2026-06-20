@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useChatReducer } from '@/hooks/useChatReducer';
 import { useChatStream } from '@/hooks/useChatStream';
 import { useSessionStore } from '@/hooks/useSessionStore';
@@ -12,6 +12,8 @@ export function useChatController() {
   const {
     sessions,
     activeSessionId,
+    setActiveSessionId,
+    loadSessions,
     updateSessionInStore,
     newSession,
     switchSession,
@@ -49,15 +51,30 @@ export function useChatController() {
     setStatus,
   });
 
-  // Bootstrap: create session on first mount only if localStorage had none
+  // Bootstrap: load sessions from API, then create one if none exist
   const didBootstrap = useRef(false);
   useEffect(() => {
-    if (!didBootstrap.current && !activeSessionId) {
-      didBootstrap.current = true;
-      newSession();
-    }
+    if (didBootstrap.current) return;
     didBootstrap.current = true;
-  }, [activeSessionId, newSession]);
+
+    (async () => {
+      const loaded = await loadSessions();
+      if (loaded.length > 0) {
+        // Switch to the most recent session
+        const latest = loaded[0];
+        setActiveSessionId(latest.id);
+        setSessionId(latest.id);
+        if (latest.messages.length > 0) {
+          loadSession(latest.messages, latest.id);
+        }
+      } else {
+        // No sessions — create a new one
+        const newId = await newSession();
+        setSessionId(newId);
+        clearChat(newId);
+      }
+    })();
+  }, [loadSessions, setActiveSessionId, setSessionId, loadSession, newSession, clearChat]);
 
   // Persist messages to session store — debounced during streaming,
   // flushed immediately on stream end (isStreaming → false).
@@ -66,13 +83,11 @@ export function useChatController() {
     if (state.messages.length === 0) return;
 
     if (state.isStreaming) {
-      // During streaming: debounce to avoid writing localStorage on every token
       if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
       persistTimerRef.current = setTimeout(() => {
         updateSessionInStore(state.sessionId, state.messages);
       }, 500);
     } else {
-      // Stream done or error — flush immediately
       if (persistTimerRef.current) {
         clearTimeout(persistTimerRef.current);
         persistTimerRef.current = null;
@@ -107,8 +122,8 @@ export function useChatController() {
     [sendMessage],
   );
 
-  const handleNewChat = useCallback(() => {
-    const newId = newSession();
+  const handleNewChat = useCallback(async () => {
+    const newId = await newSession();
     setSessionId(newId);
     clearChat(newId);
     setInputValue('');
@@ -116,8 +131,8 @@ export function useChatController() {
   }, [clearChat, newSession, setSessionId]);
 
   const handleSwitchSession = useCallback(
-    (sessionId: string) => {
-      const session = switchSession(sessionId);
+    async (sessionId: string) => {
+      const session = await switchSession(sessionId);
       if (session && session.messages.length > 0) {
         loadSession(session.messages, sessionId);
       } else {
@@ -130,13 +145,13 @@ export function useChatController() {
   );
 
   const handleDeleteSession = useCallback(
-    (sessionId: string) => {
+    async (sessionId: string) => {
       const sessionTitle = sessions.find((s) => s.id === sessionId)?.title || 'this conversation';
       if (!window.confirm(`Delete "${sessionTitle}"? This cannot be undone.`)) return;
 
-      deleteSession(sessionId);
+      await deleteSession(sessionId);
       if (sessionId === activeSessionIdRef.current) {
-        const newId = newSession();
+        const newId = await newSession();
         setSessionId(newId);
         clearChat(newId);
         setInputValue('');

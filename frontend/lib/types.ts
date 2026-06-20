@@ -48,3 +48,9 @@ export interface ChatState {
   statusMessage: string | null;
   isStreaming: boolean;
 }
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  displayName?: string;
+}

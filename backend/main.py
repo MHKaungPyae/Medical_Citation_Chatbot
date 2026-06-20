@@ -3,14 +3,16 @@
 import json
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from backend.auth import get_current_user
 from backend.config import ErrorCode
 from backend.logging_setup import setup_logging
 from backend.openfda_client import close_client as close_openfda_client
+from backend.routers.session_routes import router as session_router
 from backend.symptom_pipeline import close_ollama_client, run as run_symptom_pipeline
 from backend.wiki_client import close_client as close_wiki_client
 
@@ -27,6 +29,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(session_router)
 
 
 class ChatRequest(BaseModel):

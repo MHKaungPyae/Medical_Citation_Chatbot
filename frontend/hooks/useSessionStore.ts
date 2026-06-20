@@ -1,119 +1,149 @@
 'use client';
 
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useState } from 'react';
 import type { Session, Message } from '@/lib/types';
-import { STORAGE_KEYS } from '@/lib/constants';
-import { generateUUID, truncateTitle } from '@/lib/utils';
+import { API_URL } from '@/lib/constants';
+import { authenticatedFetch } from '@/lib/api';
+import { truncateTitle } from '@/lib/utils';
 
-// ── localStorage helpers ──────────────────────────────────────────────────
+// ── API helpers ─────────────────────────────────────────────────────────
 
-const isClient = typeof window !== 'undefined';
-
-function loadSessions(): Session[] {
-  if (!isClient) return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.SESSIONS);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+async function fetchSessions(): Promise<Session[]> {
+  const res = await authenticatedFetch(`${API_URL}/api/sessions`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.map((s: Record<string, string>) => ({
+    id: s.id,
+    title: s.title,
+    createdAt: new Date(s.created_at).getTime(),
+    updatedAt: new Date(s.updated_at).getTime(),
+    messages: [],
+  }));
 }
 
-function saveSessions(sessions: Session[]) {
-  if (!isClient) return;
-  try {
-    localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
-  } catch {
-    // localStorage full or unavailable
-  }
+async function fetchMessages(sessionId: string): Promise<Message[]> {
+  const res = await authenticatedFetch(`${API_URL}/api/sessions/${sessionId}/messages`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.map((m: Record<string, unknown>) => ({
+    id: m.id as string,
+    role: m.role as 'user' | 'assistant',
+    content: m.content as string,
+    citations: m.citations_json ? JSON.parse(m.citations_json as string) : [],
+    status: 'done' as const,
+  }));
 }
 
-function loadActiveSessionId(): string {
-  if (!isClient) return generateUUID();
-  try {
-    return localStorage.getItem(STORAGE_KEYS.ACTIVE_SESSION) || generateUUID();
-  } catch {
-    return generateUUID();
-  }
+async function createSessionApi(title: string): Promise<Session | null> {
+  const res = await authenticatedFetch(`${API_URL}/api/sessions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) return null;
+  const s = await res.json();
+  return {
+    id: s.id,
+    title: s.title,
+    createdAt: new Date(s.created_at).getTime(),
+    updatedAt: new Date(s.updated_at).getTime(),
+    messages: [],
+  };
 }
 
-function saveActiveSessionId(id: string) {
-  if (!isClient) return;
-  try {
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_SESSION, id);
-  } catch {}
+async function deleteSessionApi(sessionId: string): Promise<boolean> {
+  const res = await authenticatedFetch(`${API_URL}/api/sessions/${sessionId}`, {
+    method: 'DELETE',
+  });
+  return res.ok;
 }
+
+async function updateSessionTitleApi(sessionId: string, title: string): Promise<boolean> {
+  const res = await authenticatedFetch(`${API_URL}/api/sessions/${sessionId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  });
+  return res.ok;
+}
+
+// ── hook ────────────────────────────────────────────────────────────────
 
 export function useSessionStore() {
-  // Initialize state directly from localStorage in the useState initializer —
-  // no useEffect-based async load that would race with useChatController.
-  const [sessions, setSessions] = useState<Session[]>(loadSessions);
-  const [activeSessionId, setActiveSessionId] = useState<string>(loadActiveSessionId);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string>('');
 
-  // Keep a ref in sync so stable callbacks can read current sessions
-  // without re-reading localStorage.
-  const sessionsRef = useRef(sessions);
-  sessionsRef.current = sessions;
+  const loadSessions = useCallback(async () => {
+    const loaded = await fetchSessions();
+    setSessions(loaded);
+    return loaded;
+  }, []);
 
   const updateSessionInStore = useCallback(
-    (sessionId: string, messages: Message[]) => {
+    async (sessionId: string, messages: Message[]) => {
+      const title = messages.find((m) => m.role === 'user')?.content || 'New Chat';
+      const truncatedTitle = truncateTitle(title);
+      const now = Date.now();
+
       setSessions((prev) => {
         const existing = prev.find((s) => s.id === sessionId);
-        const title =
-          messages.find((m) => m.role === 'user')?.content || 'New Chat';
-        const now = Date.now();
-
-        let updated: Session[];
         if (existing) {
-          updated = prev.map((s) =>
+          return prev.map((s) =>
             s.id === sessionId
-              ? { ...s, title: truncateTitle(title), updatedAt: now, messages }
-              : s
+              ? { ...s, title: truncatedTitle, updatedAt: now, messages }
+              : s,
           );
-        } else {
-          updated = [
-            {
-              id: sessionId,
-              title: truncateTitle(title),
-              createdAt: now,
-              updatedAt: now,
-              messages,
-            },
-            ...prev,
-          ];
         }
-
-        saveSessions(updated);
-        return updated;
+        return [
+          {
+            id: sessionId,
+            title: truncatedTitle,
+            createdAt: now,
+            updatedAt: now,
+            messages,
+          },
+          ...prev,
+        ];
       });
+
+      // Update title on server
+      await updateSessionTitleApi(sessionId, truncatedTitle);
     },
-    []
+    [],
   );
 
-  const newSession = useCallback(() => {
-    const id = generateUUID();
-    setActiveSessionId(id);
-    saveActiveSessionId(id);
-    return id;
+  const newSession = useCallback(async () => {
+    const session = await createSessionApi('New Chat');
+    if (session) {
+      setSessions((prev) => [session, ...prev]);
+      setActiveSessionId(session.id);
+      return session.id;
+    }
+    // Fallback: generate local ID
+    const fallbackId = crypto.randomUUID();
+    setActiveSessionId(fallbackId);
+    return fallbackId;
   }, []);
 
-  const switchSession = useCallback((sessionId: string): Session | null => {
+  const switchSession = useCallback(async (sessionId: string): Promise<Session | null> => {
     setActiveSessionId(sessionId);
-    saveActiveSessionId(sessionId);
-    return sessionsRef.current.find((s) => s.id === sessionId) || null;
-  }, []);
+    const messages = await fetchMessages(sessionId);
+    setSessions((prev) =>
+      prev.map((s) => (s.id === sessionId ? { ...s, messages } : s)),
+    );
+    return sessions.find((s) => s.id === sessionId) || null;
+  }, [sessions]);
 
-  const deleteSession = useCallback((sessionId: string) => {
-    setSessions((prev) => {
-      const updated = prev.filter((s) => s.id !== sessionId);
-      saveSessions(updated);
-      return updated;
-    });
+  const deleteSession = useCallback(async (sessionId: string) => {
+    await deleteSessionApi(sessionId);
+    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
   }, []);
 
   return {
     sessions,
     activeSessionId,
+    setActiveSessionId,
+    loadSessions,
     updateSessionInStore,
     newSession,
     switchSession,

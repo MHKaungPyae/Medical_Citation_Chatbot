@@ -394,7 +394,7 @@ async def run(query: str, session_id: str) -> AsyncGenerator[str, None]:
             fda_parts.append(ctx)
     fda_context = "\n\n".join(fda_parts)
 
-    history = session_store.get_history(session_id) if session_id else ""
+    history = await session_store.get_history(session_id) if session_id else ""
 
     prompt = _build_prompt(
         user_query=query,
@@ -442,8 +442,8 @@ async def run(query: str, session_id: str) -> AsyncGenerator[str, None]:
 
     # ── Phase 7: Persist conversation ───────────────────────────────────
     if session_id:
-        session_store.save(session_id, "user", query)
-        session_store.save(session_id, "assistant", full_text)
+        await session_store.save(session_id, "user", query)
+        await session_store.save(session_id, "assistant", full_text)
 
     logger.info(
         "Response complete: tokens=%d citations=%d used=%d wiki=%d fda=%d",

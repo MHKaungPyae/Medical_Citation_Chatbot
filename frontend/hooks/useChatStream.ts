@@ -3,6 +3,7 @@
 import { useCallback, useRef } from 'react';
 import type { Citation } from '@/lib/types';
 import { API_URL, STATUS_MESSAGES, ERROR_MESSAGES } from '@/lib/constants';
+import { authenticatedFetch } from '@/lib/api';
 
 interface UseChatStreamOptions {
   sessionId: string;
@@ -61,7 +62,7 @@ export function useChatStream({
       isStreamingRef.current = true;
 
       try {
-        const response = await fetch(`${API_URL}/api/chat`, {
+        const response = await authenticatedFetch(`${API_URL}/api/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query: trimmed, session_id: sessionId }),

@@ -4,7 +4,15 @@ Every constant that was previously scattered across main.py and openfda_client.p
 lives here so there is a single source of truth.
 """
 
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
 import httpx
+
+# Load .env from backend/ directory (one level up from this file)
+_env_path = Path(__file__).resolve().parent / ".env"
+load_dotenv(_env_path)
 
 # ── Ollama ─────────────────────────────────────────────────────────────────
 

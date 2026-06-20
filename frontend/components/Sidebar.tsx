@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import type { Session } from '@/lib/types';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
+import type { Session, AuthUser } from '@/lib/types';
 import { formatTimestamp } from '@/lib/utils';
 import { IconClose, IconTrash } from './Icons';
 
@@ -13,6 +13,8 @@ interface SidebarProps {
   onNewChat: () => void;
   onSwitchSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
+  user: AuthUser | null;
+  onSignOut: () => void;
 }
 
 export default function Sidebar({
@@ -23,11 +25,28 @@ export default function Sidebar({
   onNewChat,
   onSwitchSession,
   onDeleteSession,
+  user,
+  onSignOut,
 }: SidebarProps) {
   const sortedSessions = useMemo(
     () => [...sessions].sort((a, b) => b.updatedAt - a.updatedAt),
     [sessions],
   );
+
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!profileOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [profileOpen]);
 
   return (
     <>
@@ -124,6 +143,38 @@ export default function Sidebar({
             </div>
           )}
         </div>
+
+        {/* User profile */}
+        {user && (
+          <div ref={profileRef} className="relative border-t border-warm-border">
+            {profileOpen && (
+              <div className="absolute bottom-full left-0 right-0 m-2 rounded-xl border border-warm-border bg-white p-3 shadow-lg">
+                <p className="mb-1 text-sm font-medium text-warm-gray">{user.displayName || 'User'}</p>
+                <p className="mb-3 text-xs text-muted-warm">{user.email}</p>
+                <button
+                  onClick={() => { setProfileOpen(false); onSignOut(); }}
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm text-warm-gray transition-colors hover:bg-cream-bg"
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
+            <button
+              onClick={() => setProfileOpen((v) => !v)}
+              className="flex w-full items-center gap-3 px-4 py-3 transition-colors hover:bg-cream-bg"
+            >
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-teal-light text-sm font-semibold text-teal-dark">
+                {(user.displayName || user.email)[0].toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1 text-left">
+                <p className="truncate text-sm font-medium text-warm-gray">
+                  {user.displayName || 'User'}
+                </p>
+                <p className="truncate text-xs text-muted-warm">{user.email}</p>
+              </div>
+            </button>
+          </div>
+        )}
       </aside>
     </>
   );

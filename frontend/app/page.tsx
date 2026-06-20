@@ -1,13 +1,18 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import ChatContainer from '@/components/ChatContainer';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { IconMenu } from '@/components/Icons';
 import { useChatController } from '@/hooks/useChatController';
+import { useAuthContext } from '@/components/AuthProvider';
 
 export default function Home() {
+  const router = useRouter();
+  const { user, loading, signOut } = useAuthContext();
+
   const {
     sidebarOpen, setSidebarOpen,
     sessions, activeSessionId,
@@ -16,6 +21,18 @@ export default function Home() {
     handleSend, handleStop, handleExampleClick,
     handleNewChat, handleSwitchSession, handleDeleteSession,
   } = useChatController();
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [loading, user, router]);
+
+  // Show nothing while checking auth
+  if (loading || !user) {
+    return null;
+  }
 
   return (
     <div className="flex h-full bg-cream-bg">
@@ -28,6 +45,8 @@ export default function Home() {
         onNewChat={handleNewChat}
         onSwitchSession={handleSwitchSession}
         onDeleteSession={handleDeleteSession}
+        user={user}
+        onSignOut={signOut}
       />
 
       <ErrorBoundary>
