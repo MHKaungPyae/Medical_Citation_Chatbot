@@ -1,22 +1,20 @@
 <!-- ch-3 personal-project report. Copy this file to ch-3/<your-github-username>/report.md -->
 # ch-3 Personal Project — Report
 
-github_username: MHKaungPyae
-personal_repo_url: https://github.com/MHKaungPyae/Medical_Citation_Chatbot
+github_username: mhkaungpyae
+personal_repo_url: https://github.com/mhkaungpyae/Medical_Citation_Chatbot
 project_summary: Generative RAG chatbot that answers any medical question using live data from Wikipedia and OpenFDA APIs, fed to a local qwen2.5:7b model via Ollama, streamed to a Next.js frontend with clickable citations and medical disclaimers.
 slides_url: slides/pitch.md
 
 ## Methodology
-<!-- How you worked: project-based approach + your project workflow (commit as you build). 2-4 sentences. -->
 
 I followed a phased development approach (environment setup → backend foundation → live data integration → RAG fusion → frontend). Each phase was implemented using Claude Code with subagent-driven development — subagents handled parallel work (API clients for Wikipedia and OpenFDA, frontend components) while adversarial review verified correctness. The project uses a scoped Claude Code skill (`.claude/skills/medical-rag/SKILL.md`) to enforce the tech stack (FastAPI + Next.js + Ollama + live APIs only, no vector databases) across all development sessions. The pipeline evolved from a PubMed literature search through a keyword-classified symptom→medication recommender, and ultimately to a fully generative RAG system — no hardcoded prompts, no keyword lists, no query classifier. The LLM itself decides how to answer based on retrieved context.
 
 ## Evidence — Claude Code usage
-<!-- List the ACTUAL paths in your personal repo. The validator checks these exist. -->
 
 ### MCP
 - path: .claude/mcp.json
-- what: Two MCP servers configured — GitHub (`@modelcontextprotocol/server-github`) using `${GITHUB_TOKEN}` env var for authentication, providing tools for GitHub issue/PR management directly from Claude Code; and Context7 (`@upstash/context7-mcp@latest`) for enhanced context management and retrieval. GitHub Spec-Kit (`specify` CLI) also installed with slash commands for spec-driven development (`/speckit-specify`, `/speckit-plan`, `/speckit-tasks`, etc.).
+- what: GitHub MCP server (`@modelcontextprotocol/server-github`) using `${GITHUB_TOKEN}` env var for authentication. Provides tools for GitHub issue/PR management directly from Claude Code. GitHub Spec-Kit (`specify` CLI) installed with slash commands for spec-driven development (`/speckit-specify`, `/speckit-plan`, `/speckit-tasks`, etc.).
 
 ### Skill
 - path: .claude/skills/medical-rag/SKILL.md

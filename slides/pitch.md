@@ -102,6 +102,4 @@ Started with PubMed literature search, pivoted to keyword classification, then r
 - [x] MCP used — GitHub MCP server in `.claude/mcp.json` + Spec-Kit integration
 - [x] Skill used — project-scoped skill at `.claude/skills/medical-rag/SKILL.md`
 - [x] Agent used — multi-agent development with adversarial review (see `docs/superpowers/specs/`)
-- [x] Report ready — `_TEMPLATE.md` updated, `spec.md` (system spec) + `plan.md` (dev plan) complete
-- [x] Live testing — `curl` verified streaming SSE pipeline end-to-end
-- [ ] Report in team repo — copy `_TEMPLATE.md` to `ch-3/<your-github-username>/report.md`
+- [x] Report in team repo — copy `_TEMPLATE.md` to `ch-3/<your-github-username>/report.md`
