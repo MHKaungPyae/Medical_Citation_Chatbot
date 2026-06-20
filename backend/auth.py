@@ -1,5 +1,6 @@
 """Supabase JWT verification for FastAPI."""
 
+import base64
 import os
 import logging
 from typing import Optional
@@ -9,15 +10,22 @@ from jose import JWTError, jwt
 
 logger = logging.getLogger(__name__)
 
-_SUPABASE_JWT_SECRET: Optional[str] = None
+_SUPABASE_JWT_SECRET: Optional[bytes] = None
 
 
-def _get_jwt_secret() -> str:
+def _get_jwt_secret() -> bytes:
+    """Return the JWT secret, base64-decoded (Supabase provides it encoded)."""
     global _SUPABASE_JWT_SECRET
     if _SUPABASE_JWT_SECRET is None:
-        _SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "")
-        if not _SUPABASE_JWT_SECRET:
+        raw = os.environ.get("SUPABASE_JWT_SECRET", "")
+        if not raw:
             raise RuntimeError("Missing SUPABASE_JWT_SECRET environment variable.")
+        # Supabase provides the secret as base64 — decode it
+        try:
+            _SUPABASE_JWT_SECRET = base64.b64decode(raw)
+        except Exception:
+            # If it's not valid base64, use as-is
+            _SUPABASE_JWT_SECRET = raw.encode()
     return _SUPABASE_JWT_SECRET
 
 
@@ -39,7 +47,7 @@ async def get_current_user(authorization: str = Header(...)) -> dict:
         payload = jwt.decode(
             token,
             secret,
-            algorithms=["HS256"],
+            algorithms=["HS256", "HS384", "HS512"],
             options={"verify_aud": False},
         )
     except JWTError as exc:

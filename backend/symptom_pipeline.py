@@ -101,6 +101,9 @@ def _normalize_citation_markers(text: str) -> str:
     text = re.sub(r"\[\s*(\d+)\s*\]", r"[[CITATION:\1]]", text)
     text = re.sub(r"\(\s*(\d+)\s*\)", r"[[CITATION:\1]]", text)
     text = re.sub(r"\[\[CITATION\s+(\d+)\]\]", r"[[CITATION:\1]]", text)
+    # Strip literal [[CITATION:N]] — LLM copied the template literally
+    text = text.replace("[[CITATION:N]]", "")
+    text = text.replace("[[CITATION: N]]", "")
     return text
 
 
@@ -279,7 +282,8 @@ def _build_prompt(
     parts.append(
         "Answer the user's question helpfully using the provided context. "
         "Be conversational, empathetic, and clear. "
-        "Reference sources with [[CITATION:N]] when using specific facts from the context. "
+        "When citing a source, use the format [[CITATION:X]] where X is the citation number "
+        "(e.g. [[CITATION:1]], [[CITATION:2]]). The number must match the CITATION number shown in the context. "
         "Include a brief medical disclaimer."
     )
 

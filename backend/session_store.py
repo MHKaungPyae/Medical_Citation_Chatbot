@@ -42,13 +42,30 @@ class SessionStore:
         return "\n".join(lines)
 
     async def save(self, session_id: str, role: str, content: str) -> None:
-        """Append a message to *session_id*."""
+        """Append a message to *session_id*. Creates session if it doesn't exist."""
         db = get_supabase()
-        db.table("messages").insert({
-            "session_id": session_id,
-            "role": role,
-            "content": content,
-        }).execute()
+
+        # Ensure session exists (create if missing)
+        existing = db.table("chat_sessions").select("id").eq("id", session_id).execute()
+        if not existing.data:
+            try:
+                db.table("chat_sessions").insert({
+                    "id": session_id,
+                    "title": content[:100] if role == "user" else "New Chat",
+                }).execute()
+            except Exception as exc:
+                # If session creation fails (e.g. missing user_id), log and skip save
+                logger.warning("Could not create session %s: %s", session_id, exc)
+                return
+
+        try:
+            db.table("messages").insert({
+                "session_id": session_id,
+                "role": role,
+                "content": content,
+            }).execute()
+        except Exception as exc:
+            logger.warning("Could not save message to session %s: %s", session_id, exc)
 
     async def save_citations(self, session_id: str, citations_json: str) -> None:
         """Update the last assistant message with citation data."""
