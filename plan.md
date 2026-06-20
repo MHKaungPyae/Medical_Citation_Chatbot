@@ -11,6 +11,9 @@ Build a generative medical chatbot using FastAPI, React, and local Ollama (`qwen
 
 ```
 User → Next.js (port 3000) → FastAPI (port 8000) → Wikipedia / OpenFDA / Ollama
+                ↕                       ↕
+          Supabase Auth          Supabase PostgreSQL
+          (JWT tokens)           (sessions + messages)
                                    ↑
                           SSE: token, citation, done, error, warning, info
 ```
@@ -49,15 +52,18 @@ Phase 7: Persist conversation — save user/assistant turns to session store
 Citation post-processing: normalise markers → filter used → done event
 ```
 
-### Module Graph (10 backend files)
+### Module Graph (14 backend files)
 ```
 main.py → symptom_pipeline.py            (self-contained — no hardcoded prompts, no keywords)
               ├── wiki_client.py          (MediaWiki API — raw query search, no suffix bias)
               ├── openfda_client.py       (FDA drug/label — OTC + Rx field extraction)
-              ├── session_store.py        (6-turn history, 30-min TTL)
-              ├── config.py               (centralised endpoints, timeouts, model)
+              ├── session_store.py        (Supabase-backed session/message persistence)
+              ├── config.py               (centralised endpoints, timeouts, model + load_dotenv)
               ├── retry.py                (shared HTTP retry + Retry-After parsing)
               └── logging_setup.py        (request-ID via context var)
+          → routers/session_routes.py     (session CRUD API — auth-protected)
+          → auth.py                       (JWT verification via python-jose)
+          → supabase_client.py            (Supabase client singleton)
 
 Unused / standby:
   rxnav_client.py   — RxNorm drug name → RxCUI (removed from pipeline 2026-06-18, kept for reference)
@@ -147,7 +153,7 @@ Below is the original 4-phase plan written before development began. Checkboxes 
 ### Phase 3: Web RAG Fusion
 
 - [x] **Prompt Engineering:** Removed hardcoded system prompt 2026-06-17. Now uses minimal generative instruction — model decides how to answer.
-- [x] **Conversation History:** In-memory session store (6-turn window, 30-min TTL).
+- [x] **Conversation History:** Supabase-backed session store (6-turn history window, persistent).
 - [x] **Assemble the Route:** POST /api/chat runs wiki → drug extraction → openfda → prompt → stream → persist.
 - [x] **Citation Post-Processing:** Normalises `[1]`, `(1)`, `[[CITATION N]]` → `[[CITATION:N]]`. Filters unused citations.
 - [x] **Error Handling:** Warning event on empty results. Error event on timeout. All queries accepted — no non-medical rejection.
@@ -162,6 +168,6 @@ Below is the original 4-phase plan written before development began. Checkboxes 
 - [x] **SSE Consumer:** `fetch()` with `ReadableStream` + `AbortController`. Accumulates tokens and citations.
 - [x] **Citation Rendering:** Source-labeled inline tags + rich citation pills with title/metadata.
 - [x] **UI States:** Idle, loading, streaming, complete, error, empty results — all handled.
-- [x] **Session Persistence:** `localStorage`-backed session store with `generateUUID()`.
+- [x] **Session Persistence:** Supabase-backed via API calls (authenticated with JWT). Frontend uses `authenticatedFetch` wrapper.
 - [x] **Accessibility & State Review (2026-06-18):** Second full audit via subagents. Backend: removed dead rxnav_data computation, fixed double retry nesting in OpenFDA client, eliminated duplicate find_rxcui call, removed load_dotenv, removed duplicate stop word. Frontend: fixed session bootstrap race condition, debounced localStorage writes during streaming, made sidebar session items keyboard-accessible via `<button>` elements, cleaned up 6 unused constants, removed dead useEffect import.
 - [ ] **Frontend Tests:** Not yet written (vitest + MSW).

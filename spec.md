@@ -26,6 +26,8 @@ User → Next.js (:3000) → FastAPI (:8000) → Wikipedia / OpenFDA / Ollama
 | LLM | `qwen2.5:7b` via Ollama (local) |
 | APIs | Wikipedia MediaWiki, OpenFDA Drug Label |
 | HTTP | `httpx` (async) |
+| Auth | Supabase Auth (JWT) + `python-jose` verification |
+| Database | Supabase PostgreSQL (sessions, messages, profiles) |
 
 ---
 
@@ -35,13 +37,16 @@ User → Next.js (:3000) → FastAPI (:8000) → Wikipedia / OpenFDA / Ollama
 
 ```
 main.py
-  └── symptom_pipeline.py              ← self-contained; no hardcoded prompts
-        ├── wiki_client.py             ← MediaWiki search + extract
-        ├── openfda_client.py          ← FDA drug labels (Rx + OTC fields)
-        ├── session_store.py           ← in-memory, 6-turn window, 30-min TTL
-        ├── config.py                  ← all constants live here
-        ├── retry.py                   ← shared HTTP retry with Retry-After
-        └── logging_setup.py           ← request-ID context var
+  ├── symptom_pipeline.py              ← self-contained; no hardcoded prompts
+  │     ├── wiki_client.py             ← MediaWiki search + extract
+  │     ├── openfda_client.py          ← FDA drug labels (Rx + OTC fields)
+  │     ├── session_store.py           ← Supabase-backed session/message persistence
+  │     ├── config.py                  ← all constants + load_dotenv
+  │     ├── retry.py                   ← shared HTTP retry with Retry-After
+  │     └── logging_setup.py           ← request-ID context var
+  ├── routers/session_routes.py        ← session CRUD API (auth-protected)
+  ├── auth.py                          ← JWT verification (python-jose)
+  └── supabase_client.py               ← Supabase client singleton
 ```
 
 `rxnav_client.py` exists on disk but is **not called** by the pipeline (unwired 2026-06-18).
@@ -60,9 +65,22 @@ Streaming SSE endpoint. Accepts JSON:
 }
 ```
 
+**Auth:** Requires `Authorization: Bearer <supabase_jwt>` header.
+
 **Validation:** If `query` is empty/missing → yield single `error` event with code `EMPTY_QUERY`.
 
 **Error guard:** All pipeline exceptions are caught and surfaced as `event: error` with code `INTERNAL_ERROR`. The SSE stream never hangs.
+
+#### Session Routes (all auth-protected)
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `GET /api/sessions` | List user's sessions (most recent first) |
+| `POST /api/sessions` | Create new session |
+| `GET /api/sessions/{id}` | Get single session (ownership check) |
+| `PATCH /api/sessions/{id}` | Update session (e.g. title) |
+| `DELETE /api/sessions/{id}` | Delete session + messages (ownership check) |
+| `GET /api/sessions/{id}/messages` | Get messages for a session |
 
 ### 2.3 SSE Wire Format
 
@@ -154,9 +172,10 @@ Phase 7 — Persist conversation
 
 ### 2.5 Session Store
 
-- **Storage:** In-memory `defaultdict(list)` + timestamp dict (not persistent across restarts)
-- **Window:** Last 6 turns (12 messages)
-- **TTL:** 30 minutes of inactivity → auto-pruned on next access
+- **Storage:** Supabase PostgreSQL (persistent across restarts)
+- **Tables:** `sessions` (id, user_id, title, created_at, updated_at), `messages` (id, session_id, role, content, created_at)
+- **Window:** Last 6 turns (12 messages) fetched for prompt context
+- **Auth:** All operations require valid Supabase JWT; ownership enforced per user
 - **Format returned to prompt:**
   ```
   User: <query>
@@ -200,19 +219,21 @@ Only indices actually present in the final normalized text are included in the `
 
 ```
 layout.tsx
-  └── page.tsx
-        ├── Sidebar.tsx              ← session list (keyboard-accessible <button>s)
-        ├── ChatContainer.tsx        ← main chat area
-        │     ├── EmptyState.tsx     ← shown when no messages
-        │     ├── MessageList.tsx
-        │     │     └── MessageBubble.tsx
-        │     │           ├── (streaming text)
-        │     │           ├── InlineCitation.tsx   ← [Wikipedia ↗] / [FDA ↗] tags
-        │     │           └── CitationPill.tsx     ← full citation below message
-        │     ├── StatusBubble.tsx    ← "Searching medical sources..."
-        │     └── StreamingDots.tsx   ← animated dots while streaming
-        ├── AutoExpandTextarea.tsx    ← input field
-        └── SendButton.tsx
+  └── AuthProvider.tsx               ← Supabase auth context (wraps all pages)
+        ├── page.tsx                 ← auth guard (redirects to /login if unauthenticated)
+        │     ├── Sidebar.tsx        ← session list + user profile at bottom
+        │     ├── ChatContainer.tsx  ← main chat area
+        │     │     ├── EmptyState.tsx
+        │     │     ├── MessageList.tsx
+        │     │     │     └── MessageBubble.tsx
+        │     │     │           ├── InlineCitation.tsx
+        │     │     │           └── CitationPill.tsx
+        │     │     ├── StatusBubble.tsx
+        │     │     └── StreamingDots.tsx
+        │     ├── AutoExpandTextarea.tsx
+        │     └── SendButton.tsx
+        ├── /login/page.tsx          ← login form (AuthCard + AuthInput + AuthButton)
+        └── /register/page.tsx       ← register form (AuthCard + AuthInput + AuthButton)
 ```
 
 ### 3.2 State Management
@@ -259,19 +280,22 @@ sendMessage(query):
 
 ```
 Startup:
-  1. useSessionStore initializes state from localStorage in useState initializer
-     (NOT in useEffect — avoids race condition)
-  2. useChatController checks didBootstrap ref guard
-     - If no activeSessionId and hasn't bootstrapped: call newSession()
-     - Otherwise: do nothing (session loaded from store)
+  1. useChatController loads sessions from API (GET /api/sessions)
+  2. If sessions exist → loads most recent session's messages
+  3. If no sessions → creates a new one via API (POST /api/sessions)
 
 During streaming:
-  - Debounced localStorage writes: 500ms trailing edge
-  - Prevents 50+ setItem calls per response
+  - Messages persisted via API (debounced)
 
-When streaming ends:
-  - Clear debounce timer
-  - Immediate localStorage flush
+Session operations:
+  - newSession() → POST /api/sessions
+  - switchSession(id) → GET /api/sessions/{id}/messages
+  - deleteSession(id) → DELETE /api/sessions/{id}
+  - updateSessionTitle(id, title) → PATCH /api/sessions/{id}
+
+Auth:
+  - All API calls use authenticatedFetch (Supabase JWT injected)
+  - Unauthenticated users redirected to /login
 ```
 
 ### 3.5 Citation Rendering
@@ -437,8 +461,6 @@ All settings in `backend/config.py`:
 | **No unit tests** | Regression risk on edits | Manual curl testing |
 | **No evaluation baseline** | Cannot measure answer quality | Planned, not yet done |
 | **No frontend tests** | UI regression risk | Manual browser testing |
-| **In-memory session store** | History lost on restart | Planned, not yet done |
 | **Single model (qwen2.5:7b)** | No fallback if model unavailable | Connection error surfaced to user |
-| **Heuristic drug extraction** | May miss unusual drug names | 2-pass extraction (capitalized + 5-15 char lowercase) catches most |
-| **No persistent sessions** | Sessions lost on backend restart | Frontend has localStorage; backend could add SQLite/Redis |
+| **Heuristic drug extraction** | May miss unusual drug names | 3-pass extraction (capitalized + all-caps + lowercase) catches most |
 | **No rate limiting** | OpenFDA has rate limits | Retry logic handles 429; no explicit client-side throttling |

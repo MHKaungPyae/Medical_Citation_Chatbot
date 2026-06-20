@@ -16,11 +16,12 @@ This skill enforces the architectural constraints of the Medical Chatbot. Loaded
 - **Styling:** Tailwind CSS.
 - **Stream Consumption:** `fetch()` with `ReadableStream` to consume SSE from the FastAPI backend.
 
-### Data Sources (Live APIs Only — No Keys Required)
+### Data Sources (Live APIs Only)
 - **Wikipedia MediaWiki:** `en.wikipedia.org/w/api.php` — raw query search (no suffix bias), plain-text extracts. Requires `User-Agent` header.
 - **OpenFDA Drug Label:** `api.fda.gov/drug/label.json` — Rx + OTC field extraction, DailyMed URLs. No key.
 - **RxNav/RxNorm:** Client exists at `rxnav_client.py` but is NOT wired in the pipeline (unwired 2026-06-18). Heuristic drug extraction from query + wiki text proved sufficient.
-- **NO local databases, NO vector stores, NO ChromaDB, NO FAISS, NO SQLite for document storage.** All retrieval is live from the web.
+- **Supabase:** Hosted PostgreSQL for session/message persistence + Supabase Auth for JWT-based authentication. No local database.
+- **NO vector stores, NO ChromaDB, NO FAISS.** All retrieval is live from the web.
 
 ### Pipeline (Generative — No Classifier, No Hardcoded Prompt)
 ```
@@ -60,6 +61,9 @@ Ollama qwen2.5:7b → SSE stream (token|citation|done|error|warning|info)
 - A medical disclaimer in every response.
 - `PYTHONPATH=.` when running from the project root.
 - `Retry-After` header parsing + exponential backoff for transient HTTP failures (via `retry.py`).
+- `authenticatedFetch` (from `frontend/lib/api.ts`) for all frontend→backend API calls — injects Supabase JWT.
+- Supabase Auth for user authentication — JWT verification in backend (`auth.py`), auth guard on frontend pages.
+- `load_dotenv()` in `config.py` to load `backend/.env` — never hardcode credentials.
 
 ### Error Handling:
 - Every external API call must have a timeout and catch `httpx.TimeoutException` and `httpx.ConnectError`.
@@ -67,19 +71,24 @@ Ollama qwen2.5:7b → SSE stream (token|citation|done|error|warning|info)
 - SSE connections must never hang — always emit `event: error` on failure before closing.
 
 ### Code Organization:
-- `backend/` — 10 Python modules (8 active + 1 standby + 1 init):
-  - `main.py` — FastAPI server (SSE streaming route with try/except guard)
+- `backend/` — 13 Python modules (11 active + 1 standby + 1 init):
+  - `main.py` — FastAPI server (SSE streaming route, session router, shutdown hooks)
   - `symptom_pipeline.py` — self-contained pipeline (prompt building, drug extraction, context formatting, streaming — all inline)
   - `wiki_client.py` — Wikipedia MediaWiki API (raw query search + extracts, no suffix bias)
   - `openfda_client.py` — OpenFDA drug label API (OTC + Rx field extraction)
-  - `config.py` — centralised configuration (endpoints, timeouts, model name, prompt limits)
+  - `config.py` — centralised configuration (endpoints, timeouts, model name, prompt limits, `load_dotenv`)
   - `retry.py` — shared HTTP retry helper with Retry-After parsing
-  - `session_store.py` — in-memory conversation history (6-turn window, 30-min TTL)
+  - `session_store.py` — Supabase-backed session/message persistence
+  - `auth.py` — JWT verification middleware (`python-jose`), `get_current_user` FastAPI dependency
+  - `routers/session_routes.py` — session CRUD API (GET/POST/PATCH/DELETE), auth-protected with ownership checks
+  - `supabase_client.py` — Supabase client singleton (uses env vars)
   - `logging_setup.py` — structured logging with request-ID injection via contextvar
   - `rxnav_client.py` — RxNorm drug name normalisation (UNWIRED — not called by pipeline, kept for reference)
   - `__init__.py`
 - `frontend/` — Next.js 16 App Router + TypeScript + Tailwind CSS:
-  - `hooks/` — `useChatController`, `useChatReducer` (12 actions), `useChatStream`, `useSessionStore`, `useScrollManager`
-  - `components/` — `ChatContainer` (React.memo), `MessageList`, `MessageBubble`, `InlineCitation`, `CitationPill`, `Sidebar`, `SendButton`, `AutoExpandTextarea`, `EmptyState`, `StatusBubble`, `StreamingDots`, `ErrorBoundary`, `Icons`
-  - `lib/` — `types.ts`, `constants.ts`, `utils.ts`
+  - `hooks/` — `useChatController`, `useChatReducer` (12 actions), `useChatStream`, `useSessionStore`, `useScrollManager`, `useAuth`
+  - `components/` — `ChatContainer` (React.memo), `MessageList`, `MessageBubble`, `InlineCitation`, `CitationPill`, `Sidebar`, `SendButton`, `AutoExpandTextarea`, `EmptyState`, `StatusBubble`, `StreamingDots`, `ErrorBoundary`, `Icons`, `AuthProvider`, `AuthCard`, `AuthInput`, `AuthButton`
+  - `lib/` — `types.ts`, `constants.ts`, `utils.ts`, `supabase.ts`, `api.ts`
+  - `app/login/` — login page
+  - `app/register/` — register page
 - `.claude/` — skills (`SKILL.md`), agents (`medical-rag-builder.md`), plan (`plan.md` — canonical project document)

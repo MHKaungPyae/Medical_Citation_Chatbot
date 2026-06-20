@@ -22,6 +22,9 @@ npm run dev
 
 ```
 User → Next.js (port 3000) → FastAPI (port 8000) → Wikipedia / OpenFDA / Ollama
+                ↕                       ↕
+          Supabase Auth          Supabase PostgreSQL
+          (JWT tokens)           (sessions + messages)
                                    ↑
                           SSE: token | citation | done | error | warning | info
 ```
@@ -56,15 +59,27 @@ Citation post-processing: normalise markers → filter used citations → done e
 | `backend/wiki_client.py` | MediaWiki API: raw query search + plain-text extracts (no suffix bias) |
 | `backend/openfda_client.py` | OpenFDA drug/label: Rx + OTC field extraction, DailyMed links |
 | `backend/rxnav_client.py` | RxNorm API: drug name → RxCUI (UNWIRED — not called by pipeline, kept for reference) |
-| `backend/config.py` | Centralised config: all endpoints, timeouts, model name, prompt limits |
+| `backend/config.py` | Centralised config: all endpoints, timeouts, model name, prompt limits. Loads `.env` via `load_dotenv` |
 | `backend/retry.py` | Shared HTTP retry with Retry-After parsing, exponential backoff |
-| `backend/session_store.py` | In-memory conversation history (6-turn window, 30-min TTL) |
+| `backend/session_store.py` | Supabase-backed session/message persistence (6-turn history window) |
+| `backend/auth.py` | JWT verification middleware — validates Supabase tokens, exposes `get_current_user` dependency |
+| `backend/routers/session_routes.py` | Session CRUD API (GET/POST/PATCH/DELETE), all auth-protected with ownership checks |
+| `backend/supabase_client.py` | Supabase client singleton (uses `SUPABASE_URL` + `SUPABASE_KEY` from env) |
 | `backend/logging_setup.py` | Structured logging with request-ID via context var |
-| `backend/main.py` | FastAPI server, POST /api/chat SSE dispatch with try/except guard |
+| `backend/main.py` | FastAPI server, POST /api/chat SSE dispatch, session router, shutdown hooks |
 | `frontend/hooks/useChatController.ts` | Single hook: reducer + stream + session store + debounced persistence |
-| `frontend/hooks/useChatStream.ts` | SSE consumer (fetch + ReadableStream + CRLF-safe parsing) |
+| `frontend/hooks/useChatStream.ts` | SSE consumer (authenticatedFetch + ReadableStream + CRLF-safe parsing) |
 | `frontend/hooks/useChatReducer.ts` | 12-action useReducer for chat state |
-| `frontend/hooks/useSessionStore.ts` | localStorage-backed sessions (initialized in useState, not useEffect) |
+| `frontend/hooks/useSessionStore.ts` | API-backed sessions — CRUD via Supabase-authenticated fetch calls |
+| `frontend/hooks/useAuth.ts` | Supabase auth hook: signIn, signUp, signOut, getToken, onAuthStateChange |
+| `frontend/lib/supabase.ts` | Supabase client singleton (env-var validated) |
+| `frontend/lib/api.ts` | `authenticatedFetch` — injects Supabase session JWT into requests |
+| `frontend/components/AuthProvider.tsx` | React context provider for auth state, exposes `useAuthContext()` |
+| `frontend/components/AuthCard.tsx` | Shared auth page layout (logo + card + footer link) |
+| `frontend/components/AuthInput.tsx` | Styled input with label, error state, focus ring |
+| `frontend/components/AuthButton.tsx` | Submit button with loading state |
+| `frontend/app/login/page.tsx` | Login page (email + password, validation, error display) |
+| `frontend/app/register/page.tsx` | Register page (email + password + display name, validation) |
 | `frontend/components/MessageBubble.tsx` | Renders text with [[CITATION:N]] → inline [Wikipedia ↗] / [FDA ↗] tags |
 | `frontend/components/InlineCitation.tsx` | Clickable source-labeled inline citation badges |
 | `frontend/components/CitationPill.tsx` | Rich citation pills below message (title, source, external link) |
@@ -80,6 +95,8 @@ Citation post-processing: normalise markers → filter used citations → done e
 - **Streaming:** `_stream_ollama()` yields `(event_type, data_dict)` tuples — the caller serialises to SSE so full_text can be tracked without re-parsing.
 - **Logging:** Structured with `[request_id]` column via context var. Every `logger.info/warning` call is traceable.
 - **No hardcoded prompts:** `_build_prompt()` in `symptom_pipeline.py` is minimal — context sections + "answer helpfully, cite sources, include disclaimer". No system prompt, no role constraints.
+- **Supabase auth:** Backend verifies JWTs via `python-jose`. Frontend injects tokens via `authenticatedFetch` (`frontend/lib/api.ts`). All session routes require auth.
+- **Environment variables:** Backend uses `load_dotenv()` in `config.py` to load `backend/.env`. Frontend uses `.env.local` for `NEXT_PUBLIC_SUPABASE_*` vars. Never commit `.env` files.
 - **Pycache:** Always run `find backend -type d -name __pycache__ -exec rm -rf {} +` after code changes before restarting uvicorn.
 - **Python deps:** Always activate the venv (`source backend/.venv/bin/activate`) before running anything.
 - **Deleted files:** `prompts.py`, `query_classifier.py`, `classifier_data.py`, `pubmed_client.py`, `semantic_scholar_client.py`, `rag_pipeline.py` — do not recreate any of these.
