@@ -15,7 +15,13 @@ export function truncateTitle(text: string, maxLength: number = 50): string {
 }
 
 export function formatTimestamp(ts: number): string {
+  if (!ts || ts <= 0) return '';
+
   const diff = Date.now() - ts;
+
+  // Future timestamps — show absolute date
+  if (diff < 0) return new Date(ts).toLocaleDateString();
+
   const seconds = Math.floor(diff / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);

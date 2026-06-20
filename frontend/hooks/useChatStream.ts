@@ -89,6 +89,21 @@ export function useChatStream({
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+        let currentEvent = '';
+        let dataLines: string[] = [];
+
+        const dispatchEvent = () => {
+          if (dataLines.length === 0) return;
+          const payload = dataLines.join('\n');
+          dataLines = [];
+          try {
+            const data = JSON.parse(payload);
+            handleSSEEvent(currentEvent, data);
+          } catch {
+            // Skip malformed JSON
+          }
+          currentEvent = '';
+        };
 
         while (true) {
           const { done, value } = await reader.read();
@@ -99,21 +114,23 @@ export function useChatStream({
           const lines = buffer.split('\n').map((l) => l.replace(/\r$/, ''));
           buffer = lines.pop() || '';
 
-          let currentEvent = '';
           for (const line of lines) {
             if (line.startsWith('event: ')) {
+              // Dispatch any pending event before starting a new one
+              dispatchEvent();
               currentEvent = line.slice(7).trim();
             } else if (line.startsWith('data: ')) {
-              const dataStr = line.slice(6);
-              try {
-                const data = JSON.parse(dataStr);
-                handleSSEEvent(currentEvent, data);
-              } catch {
-                // Skip malformed JSON lines
-              }
+              dataLines.push(line.slice(6));
+            } else if (line.trim() === '') {
+              // Blank line = event boundary
+              dispatchEvent();
             }
+            // Ignore comments (lines starting with :) and unknown fields
           }
         }
+
+        // Flush any remaining event data after stream ends
+        dispatchEvent();
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'AbortError') {
           // User cancelled — keep partial text, mark as done
@@ -141,13 +158,16 @@ export function useChatStream({
               typeof data.source === 'string'
             ) {
               const source = data.source as string;
+              const validSource: Citation['source'] =
+                source === 'wikipedia' || source === 'fda'
+                  ? source
+                  : (console.warn(`[useChatStream] Unknown citation source "${source}", defaulting to "wikipedia"`),
+                    'wikipedia');
               addCitation({
                 index: data.index,
                 url: data.url,
                 title: data.title,
-                source: (source === 'wikipedia' || source === 'fda'
-                  ? source
-                  : 'wikipedia') as Citation['source'],
+                source: validSource,
                 ...(typeof data.authors === 'string' ? { authors: data.authors } : {}),
                 ...(typeof data.year === 'string' || typeof data.year === 'number'
                   ? { year: data.year } : {}),

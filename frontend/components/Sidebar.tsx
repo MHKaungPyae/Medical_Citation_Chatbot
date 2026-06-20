@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { Session } from '@/lib/types';
 import { formatTimestamp } from '@/lib/utils';
+import { IconClose, IconTrash } from './Icons';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -23,6 +24,11 @@ export default function Sidebar({
   onSwitchSession,
   onDeleteSession,
 }: SidebarProps) {
+  const sortedSessions = useMemo(
+    () => [...sessions].sort((a, b) => b.updatedAt - a.updatedAt),
+    [sessions],
+  );
+
   return (
     <>
       {/* Mobile overlay */}
@@ -48,10 +54,7 @@ export default function Sidebar({
             className="rounded-lg p-1 text-muted-warm hover:bg-cream-bg hover:text-warm-gray md:hidden"
             aria-label="Close sidebar"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <IconClose size={18} />
           </button>
         </div>
 
@@ -74,9 +77,7 @@ export default function Sidebar({
             </p>
           ) : (
             <div className="space-y-1">
-              {[...sessions]
-                .sort((a, b) => b.updatedAt - a.updatedAt)
-                .map((session) => (
+              {sortedSessions.map((session) => (
                   <button
                     key={session.id}
                     onClick={() => onSwitchSession(session.id)}
@@ -116,12 +117,7 @@ export default function Sidebar({
                         }
                       }}
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-                        <line x1="10" y1="11" x2="10" y2="17" />
-                        <line x1="14" y1="11" x2="14" y2="17" />
-                      </svg>
+                      <IconTrash size={14} />
                     </span>
                   </button>
                 ))}

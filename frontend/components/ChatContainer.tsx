@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import MessageList from './MessageList';
 import AutoExpandTextarea from './AutoExpandTextarea';
 import SendButton from './SendButton';
+import { IconChevronDown } from './Icons';
 import { useScrollManager } from '@/hooks/useScrollManager';
 import type { Message } from '@/lib/types';
 
@@ -61,10 +62,7 @@ function ChatContainer({
                        border border-warm-border bg-white px-4 py-2 text-xs text-muted-warm
                        shadow-md transition-all hover:text-warm-gray"
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <polyline points="19 12 12 19 5 12" />
-            </svg>
+            <IconChevronDown size={12} />
             Scroll to bottom
           </button>
         )}

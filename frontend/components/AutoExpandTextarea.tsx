@@ -7,6 +7,7 @@ interface AutoExpandTextareaProps {
   onChange: (value: string) => void;
   onSubmit: () => void;
   disabled: boolean;
+  maxLength?: number;
 }
 
 export default function AutoExpandTextarea({
@@ -14,6 +15,7 @@ export default function AutoExpandTextarea({
   onChange,
   onSubmit,
   disabled,
+  maxLength = 2000,
 }: AutoExpandTextareaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -45,6 +47,7 @@ export default function AutoExpandTextarea({
       onKeyDown={handleKeyDown}
       placeholder="Ask a medical question..."
       disabled={disabled}
+      maxLength={maxLength}
       rows={1}
       className="flex-1 resize-none border-0 bg-transparent py-2 text-sm
                  text-warm-gray placeholder-muted-warm outline-none

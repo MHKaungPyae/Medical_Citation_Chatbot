@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef } from 'react';
 import type { Session, Message } from '@/lib/types';
 import { STORAGE_KEYS } from '@/lib/constants';
 import { generateUUID, truncateTitle } from '@/lib/utils';
@@ -50,6 +50,11 @@ export function useSessionStore() {
   const [sessions, setSessions] = useState<Session[]>(loadSessions);
   const [activeSessionId, setActiveSessionId] = useState<string>(loadActiveSessionId);
 
+  // Keep a ref in sync so stable callbacks can read current sessions
+  // without re-reading localStorage.
+  const sessionsRef = useRef(sessions);
+  sessionsRef.current = sessions;
+
   const updateSessionInStore = useCallback(
     (sessionId: string, messages: Message[]) => {
       setSessions((prev) => {
@@ -95,7 +100,7 @@ export function useSessionStore() {
   const switchSession = useCallback((sessionId: string): Session | null => {
     setActiveSessionId(sessionId);
     saveActiveSessionId(sessionId);
-    return loadSessions().find((s) => s.id === sessionId) || null;
+    return sessionsRef.current.find((s) => s.id === sessionId) || null;
   }, []);
 
   const deleteSession = useCallback((sessionId: string) => {

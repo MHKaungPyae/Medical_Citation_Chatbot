@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useChatReducer } from '@/hooks/useChatReducer';
 import { useChatStream } from '@/hooks/useChatStream';
 import { useSessionStore } from '@/hooks/useSessionStore';
@@ -17,6 +17,10 @@ export function useChatController() {
     switchSession,
     deleteSession,
   } = useSessionStore();
+
+  // Keep a ref so callbacks don't depend on activeSessionId directly
+  const activeSessionIdRef = useRef(activeSessionId);
+  activeSessionIdRef.current = activeSessionId;
 
   const {
     state,
@@ -127,8 +131,11 @@ export function useChatController() {
 
   const handleDeleteSession = useCallback(
     (sessionId: string) => {
+      const sessionTitle = sessions.find((s) => s.id === sessionId)?.title || 'this conversation';
+      if (!window.confirm(`Delete "${sessionTitle}"? This cannot be undone.`)) return;
+
       deleteSession(sessionId);
-      if (sessionId === activeSessionId) {
+      if (sessionId === activeSessionIdRef.current) {
         const newId = newSession();
         setSessionId(newId);
         clearChat(newId);
@@ -136,7 +143,7 @@ export function useChatController() {
         setSidebarOpen(false);
       }
     },
-    [deleteSession, activeSessionId, newSession, setSessionId, clearChat],
+    [sessions, deleteSession, newSession, setSessionId, clearChat],
   );
 
   return {

@@ -12,7 +12,7 @@ interface MessageListProps {
   onExampleClick: (question: string) => void;
 }
 
-export default function MessageList({
+function MessageList({
   messages,
   statusMessage,
   onExampleClick,
@@ -22,7 +22,7 @@ export default function MessageList({
   }
 
   return (
-    <div className="flex-1 px-4 py-4">
+    <div className="flex-1 px-4 py-4" role="log" aria-live="polite" aria-label="Chat messages">
       {messages.map((msg) => (
         <MessageBubble key={msg.id} message={msg} />
       ))}
@@ -30,3 +30,5 @@ export default function MessageList({
     </div>
   );
 }
+
+export default React.memo(MessageList);
