@@ -108,6 +108,8 @@ All three external services (Wiki, OpenFDA, Ollama) use shared `httpx.AsyncClien
 
 ## Phase Details
 
+> Individual phase files: `plan/project-overview/phases/`
+
 ### Phase 7: Unit Tests
 **Goal:** Add automated test coverage for backend and frontend.
 
