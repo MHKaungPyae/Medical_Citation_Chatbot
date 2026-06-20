@@ -2,7 +2,7 @@
 
 > **Version:** 0.1.0  
 > **Last updated:** 2026-06-18  
-> **Scope:** This document describes the system *as built*, not as planned. For roadmap and history see `plan.md`.
+> **Scope:** This document describes the system *as built*, not as planned. For roadmap and history see `plan/project-overview/`.
 
 ---
 

@@ -91,4 +91,5 @@ Ollama qwen2.5:7b → SSE stream (token|citation|done|error|warning|info)
   - `lib/` — `types.ts`, `constants.ts`, `utils.ts`, `supabase.ts`, `api.ts`
   - `app/login/` — login page
   - `app/register/` — register page
-- `.claude/` — skills (`SKILL.md`), agents (`medical-rag-builder.md`), plan (`plan.md` — canonical project document)
+- `.claude/` — skills (`SKILL.md`), agents (`medical-rag-builder.md`)
+- `plan/` — project overview + phase plans (`plan/project-overview/`)
