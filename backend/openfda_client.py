@@ -23,6 +23,27 @@ from backend.retry import retry_get
 
 logger = logging.getLogger(__name__)
 
+# ── shared client ────────────────────────────────────────────────────────
+
+_shared_client: httpx.AsyncClient | None = None
+
+
+def _get_client() -> httpx.AsyncClient:
+    """Return a shared httpx.AsyncClient for OpenFDA requests."""
+    global _shared_client
+    if _shared_client is None:
+        _shared_client = httpx.AsyncClient(timeout=OPENFDA_TIMEOUT)
+    return _shared_client
+
+
+async def close_client() -> None:
+    """Close the shared client. Call on app shutdown."""
+    global _shared_client
+    if _shared_client is not None:
+        await _shared_client.aclose()
+        _shared_client = None
+
+
 # ── helpers ───────────────────────────────────────────────────────────────
 
 def _clean_text(text: str | None) -> str:
@@ -93,28 +114,28 @@ async def search_openfda(drug_name: str) -> dict[str, Any]:
     url = f"{OPENFDA_ENDPOINT}?search={search}&limit=1"
     source_url = url   # may be upgraded to a DailyMed link below
 
-    async with httpx.AsyncClient(timeout=OPENFDA_TIMEOUT) as client:
-        try:
-            response = await retry_get(
-                client, url,
-                label=f"OpenFDA({drug_name!r})",
-                max_retries=OPENFDA_MAX_RETRIES,
-                delay=OPENFDA_RETRY_DELAY,
+    client = _get_client()
+    try:
+        response = await retry_get(
+            client, url,
+            label=f"OpenFDA({drug_name!r})",
+            max_retries=OPENFDA_MAX_RETRIES,
+            delay=OPENFDA_RETRY_DELAY,
+        )
+        data = response.json()
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code not in (429, 502, 503, 504):
+            logger.warning(
+                "OpenFDA HTTP %d for drug=%r",
+                exc.response.status_code, drug_name,
             )
-            data = response.json()
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code not in (429, 502, 503, 504):
-                logger.warning(
-                    "OpenFDA HTTP %d for drug=%r",
-                    exc.response.status_code, drug_name,
-                )
-                return _not_found(drug_name)
-            # Transient errors (429/5xx) — retry_get already exhausted retries
-            logger.warning("OpenFDA exhausted retries for drug=%r", drug_name)
             return _not_found(drug_name)
-        except (httpx.TimeoutException, httpx.ConnectError, ValueError, Exception) as exc:
-            logger.warning("OpenFDA failed for drug=%r: %s", drug_name, exc)
-            return _not_found(drug_name)
+        # Transient errors (429/5xx) — retry_get already exhausted retries
+        logger.warning("OpenFDA exhausted retries for drug=%r", drug_name)
+        return _not_found(drug_name)
+    except (httpx.TimeoutException, httpx.ConnectError, ValueError, Exception) as exc:
+        logger.warning("OpenFDA failed for drug=%r: %s", drug_name, exc)
+        return _not_found(drug_name)
 
     results: list[dict[str, Any]] = data.get("results", [])
     if not results:

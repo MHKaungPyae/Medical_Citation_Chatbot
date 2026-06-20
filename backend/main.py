@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from backend.config import ErrorCode
 from backend.logging_setup import setup_logging
+from backend.openfda_client import close_client as close_openfda_client
 from backend.symptom_pipeline import close_ollama_client, run as run_symptom_pipeline
 from backend.wiki_client import close_client as close_wiki_client
 
@@ -36,6 +37,7 @@ class ChatRequest(BaseModel):
 @app.on_event("shutdown")
 async def shutdown_event():
     await close_wiki_client()
+    await close_openfda_client()
     await close_ollama_client()
 
 

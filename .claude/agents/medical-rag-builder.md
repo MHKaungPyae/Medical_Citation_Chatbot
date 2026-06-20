@@ -6,10 +6,10 @@ A general-purpose subagent used for parallel construction of the Medical Citatio
 
 ## Usage Pattern
 
-### Phase 2 — Backend Clients (3 agents in parallel)
-- **PubMed client** (`backend/pubmed_client.py`, 262 lines): esearch → efetch pipeline, XML parsing, multi-section abstract joining, author formatting with et al., multi-date-source pub date extraction, retry logic.
+### Phase 2 — Backend Clients (historical)
+- **PubMed client** (`backend/pubmed_client.py`) — DELETED. Replaced by Wikipedia + heuristic drug extraction.
 - **OpenFDA client** (`backend/openfda_client.py`, 203 lines): drug/label endpoint, text cleaning (HTML strip, entity unescape), boxed warning merging, word truncation, retry logic.
-- **Query classifier** (`backend/query_classifier.py`): 589 drugs + 440 conditions, pre-compiled regex patterns, keyword-based classification, multi-drug name extraction.
+- **Query classifier** (`backend/query_classifier.py`) — DELETED. Pipeline now accepts all queries unconditionally.
 
 ### Phase 4 — Frontend Components (10 agents in parallel)
 - CitationPill, StreamingDots, StatusBubble, EmptyState, AutoExpandTextarea, SendButton, MessageBubble, MessageList, Sidebar, ChatContainer — all with Warm Wellness design tokens, Tailwind CSS, TypeScript types.

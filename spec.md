@@ -94,7 +94,7 @@ event: error                 ← terminal, on failure
 data: {"message":"...", "code":"TIMEOUT"|"CONNECTION_REFUSED"|"INTERNAL_ERROR"|"EMPTY_QUERY"}
 ```
 
-### 2.4 Pipeline (8 Phases)
+### 2.4 Pipeline (7 Phases)
 
 ```
 Phase 1 — Wikipedia search
@@ -106,8 +106,9 @@ Phase 2 — Heuristic drug name extraction
   Input: user query text + Wiki article titles + Wiki extracts
   _extract_drug_names_from_text():
     1. Extra names first (article titles)
-    2. Pass 1: [A-Z][a-z]{4,} optionally followed by space + [a-z]{3,}
-    3. Pass 2: [a-z]{5,15}
+    2. Pass 1: [A-Z][a-z]{2,} optionally followed by hyphen/space + [a-z]{3,}
+    3. Pass 2: all-caps abbreviations [A-Z]{3,6}
+    4. Pass 3: [a-z]{4,15}
     4. Filter against 140-word STOP_WORDS frozenset
     5. Deduplicate, return top 4
   ↓
@@ -127,7 +128,7 @@ Phase 4 — Citation metadata
   Build citation list: Wiki articles first (index 1..N), then FDA results (N+1..M)
   Each: {index, url, title, source: "wikipedia"|"fda"}
   ↓
-Phase 6 — Build prompt (Phase 5 removed with RxNav)
+Phase 5 — Build prompt
   _build_prompt(query, wiki_context, fda_context, conversation_history):
     1. ## PREVIOUS CONVERSATION (if any)
     2. ## WIKIPEDIA MEDICAL INFORMATION
@@ -136,17 +137,17 @@ Phase 6 — Build prompt (Phase 5 removed with RxNav)
     5. Minimal guidance: "Answer helpfully...cite sources...include disclaimer"
   No hardcoded behavior rules, no system prompt, no role constraints.
   ↓
-Phase 7 — Stream
-  7a: Yield citation events (all metadata upfront)
-  7b: Yield info event (drugs looked up)
-  7c: Yield warning event (if nothing found)
-  7d: _stream_ollama(prompt) → token-by-token via Ollama /api/generate
-  7e: Citation post-processing:
+Phase 6 — Stream
+  6a: Yield citation events (all metadata upfront)
+  6b: Yield info event (drugs looked up)
+  6c: Yield warning event (if nothing found)
+  6d: _stream_ollama(prompt) → token-by-token via Ollama /api/generate
+  6e: Citation post-processing:
       - _normalize_citation_markers(): [N], (N), [[CITATION N]] → [[CITATION:N]]
       - _extract_citations(): find all used indices
       - Yield done event with filtered citations
   ↓
-Phase 8 — Persist conversation
+Phase 7 — Persist conversation
   session_store.save(session_id, "user", query)
   session_store.save(session_id, "assistant", full_text)
 ```

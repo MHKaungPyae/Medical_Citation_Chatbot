@@ -53,7 +53,7 @@ Ollama qwen2.5:7b → SSE stream (token|citation|done|error|warning|info)
 
 ### ALWAYS use:
 - `httpx.AsyncClient` for all outbound HTTP from the backend (shared via `_get_client()` helpers).
-- SSE event types: `token`, `citation`, `done`, `error`, `warning`.
+- SSE event types: `token`, `citation`, `done`, `error`, `warning`, `info`.
 - Citation format: `[[CITATION:N]]` or `[[CITATION N]]` markers (both normalised to `[[CITATION:N]]`).
 - Citation rendering: Source-labeled clickable tags — `[Wikipedia ↗]` (teal) and `[FDA ↗]` (amber) — rendered inline within the message text.
 - Concurrent API calls via `asyncio.gather()` — Wikipedia and OpenFDA searches run in parallel.
@@ -79,7 +79,7 @@ Ollama qwen2.5:7b → SSE stream (token|citation|done|error|warning|info)
   - `rxnav_client.py` — RxNorm drug name normalisation (UNWIRED — not called by pipeline, kept for reference)
   - `__init__.py`
 - `frontend/` — Next.js 16 App Router + TypeScript + Tailwind CSS:
-  - `hooks/` — `useChatController`, `useChatReducer` (13 actions), `useChatStream`, `useSessionStore`, `useScrollManager`
-  - `components/` — `ChatContainer` (React.memo), `MessageList`, `MessageBubble`, `InlineCitation`, `CitationPill`, `Sidebar`, `SendButton`, `AutoExpandTextarea`, `EmptyState`, `StatusBubble`, `StreamingDots`
+  - `hooks/` — `useChatController`, `useChatReducer` (12 actions), `useChatStream`, `useSessionStore`, `useScrollManager`
+  - `components/` — `ChatContainer` (React.memo), `MessageList`, `MessageBubble`, `InlineCitation`, `CitationPill`, `Sidebar`, `SendButton`, `AutoExpandTextarea`, `EmptyState`, `StatusBubble`, `StreamingDots`, `ErrorBoundary`, `Icons`
   - `lib/` — `types.ts`, `constants.ts`, `utils.ts`
 - `.claude/` — skills (`SKILL.md`), agents (`medical-rag-builder.md`), plan (`plan.md` — canonical project document)

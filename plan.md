@@ -40,11 +40,11 @@ Phase 3: OpenFDA — concurrent drug label searches
   ↓
 Phase 4: Citation metadata — build citation list from Wiki articles + FDA results
   ↓
-Phase 6: Build minimal prompt (context + "answer the question, cite sources, include disclaimer")
+Phase 5: Build minimal prompt (context + "answer the question, cite sources, include disclaimer")
   ↓
-Phase 7: Stream — send citation metadata, info/warning events, then qwen2.5:7b token stream via SSE
+Phase 6: Stream — send citation metadata, info/warning events, then qwen2.5:7b token stream via SSE
   ↓
-Phase 8: Persist conversation — save user/assistant turns to session store
+Phase 7: Persist conversation — save user/assistant turns to session store
   ↓
 Citation post-processing: normalise markers → filter used → done event
 ```

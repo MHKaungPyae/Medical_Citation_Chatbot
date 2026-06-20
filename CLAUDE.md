@@ -39,11 +39,11 @@ Phase 3: OpenFDA — concurrent drug label searches for extracted names
   ↓
 Phase 4: Citation metadata — build citation list from Wiki + FDA results
   ↓
-Phase 6: Build minimal prompt (context + "answer helpfully, cite [[CITATION:N]], include disclaimer")
+Phase 5: Build minimal prompt (context + "answer helpfully, cite [[CITATION:N]], include disclaimer")
   ↓
-Phase 7: Stream — citation metadata → info/warning → qwen2.5:7b token stream
+Phase 6: Stream — citation metadata → info/warning → qwen2.5:7b token stream
   ↓
-Phase 8: Persist conversation to session store
+Phase 7: Persist conversation to session store
   ↓
 Citation post-processing: normalise markers → filter used citations → done event
 ```
@@ -68,6 +68,8 @@ Citation post-processing: normalise markers → filter used citations → done e
 | `frontend/components/MessageBubble.tsx` | Renders text with [[CITATION:N]] → inline [Wikipedia ↗] / [FDA ↗] tags |
 | `frontend/components/InlineCitation.tsx` | Clickable source-labeled inline citation badges |
 | `frontend/components/CitationPill.tsx` | Rich citation pills below message (title, source, external link) |
+| `frontend/components/ErrorBoundary.tsx` | React error boundary — catches render crashes, shows recovery UI |
+| `frontend/components/Icons.tsx` | Shared icon components (Menu, Close, Trash, ChevronDown, Send, Stop, Spinner) |
 
 ## Conventions
 
