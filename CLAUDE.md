@@ -58,7 +58,6 @@ Citation post-processing: normalise markers → filter used citations → done e
 | `backend/symptom_pipeline.py` | Self-contained pipeline: wiki → drug extract → OpenFDA → prompt → LLM → citations (all formatting inline, no prompts.py) |
 | `backend/wiki_client.py` | MediaWiki API: raw query search + plain-text extracts (no suffix bias) |
 | `backend/openfda_client.py` | OpenFDA drug/label: Rx + OTC field extraction, DailyMed links |
-| `backend/rxnav_client.py` | RxNorm API: drug name → RxCUI (UNWIRED — not called by pipeline, kept for reference) |
 | `backend/config.py` | Centralised config: all endpoints, timeouts, model name, prompt limits. Loads `.env` via `load_dotenv` |
 | `backend/retry.py` | Shared HTTP retry with Retry-After parsing, exponential backoff |
 | `backend/session_store.py` | Supabase-backed session/message persistence (6-turn history window) |

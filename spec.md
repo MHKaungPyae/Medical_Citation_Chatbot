@@ -49,7 +49,7 @@ main.py
   └── supabase_client.py               ← Supabase client singleton
 ```
 
-`rxnav_client.py` exists on disk but is **not called** by the pipeline (unwired 2026-06-18).
+`rxnav_client.py` was deleted — heuristic drug extraction proved sufficient.
 
 ### 2.2 Endpoints
 
@@ -450,7 +450,7 @@ All settings in `backend/config.py`:
 | `pubmed_client.py` | earlier | Poor relevance, XML overhead, API key required |
 | `semantic_scholar_client.py` | earlier | Severe 429 rate limiting |
 | `rag_pipeline.py` | earlier | Full redesign → `symptom_pipeline.py` |
-| `rxnav_client.py` | 2026-06-18 | File kept but not called by pipeline (unnecessary latency) |
+| `rxnav_client.py` | 2026-06-18 | Unwired, then deleted — heuristic extraction sufficient |
 
 ---
 

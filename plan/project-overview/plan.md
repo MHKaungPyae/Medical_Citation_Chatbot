@@ -4,7 +4,7 @@
 
 Build a generative medical chatbot using FastAPI, React, and local Ollama (`qwen2.5:7b`) that retrieves live data from Wikipedia and OpenFDA APIs to answer any medical question — drug explanations, symptom inquiries, side effects, interactions, and more. Supabase provides auth and persistent storage.
 
-> **History:** Started as PubMed + OpenFDA citation chatbot → pivoted to Wikipedia + OpenFDA generative RAG. Later removed hardcoded prompts, keyword classifier, and RxNav pipeline phase. Supabase added for auth + persistence.
+> **History:** Started as PubMed + OpenFDA citation chatbot → pivoted to Wikipedia + OpenFDA generative RAG. Later removed hardcoded prompts, keyword classifier, and RxNav client. Supabase added for auth + persistence.
 
 ---
 
@@ -30,7 +30,7 @@ Build a generative medical chatbot using FastAPI, React, and local Ollama (`qwen
 
 - [x] Phase 0: Environment & Agent Setup
 - [x] Phase 1: Local AI Engine (FastAPI + Ollama streaming)
-- [x] Phase 2: Live Medical Data Integration (Wikipedia, OpenFDA, RxNav built then unwired)
+- [x] Phase 2: Live Medical Data Integration (Wikipedia, OpenFDA, RxNav built then deleted)
 - [x] Phase 3: Web RAG Fusion (pipeline, prompt, session store, citations)
 - [x] Phase 4: Web Frontend (components, state, SSE consumer, citation rendering)
 - [x] Phase 5: Supabase Auth & Database (JWT middleware, session CRUD, login/register)
@@ -80,9 +80,6 @@ main.py
   ├── routers/session_routes.py        ← session CRUD API (auth-protected)
   ├── auth.py                          ← JWT verification (python-jose)
   └── supabase_client.py               ← Supabase client singleton
-
-Unused / standby:
-  rxnav_client.py   ← RxNorm drug name → RxCUI (unwired 2026-06-18)
 ```
 
 ---
@@ -140,7 +137,7 @@ All three external services (Wiki, OpenFDA, Ollama) use shared `httpx.AsyncClien
 |-----|---------|--------|
 | **Wikipedia (MediaWiki)** | ✅ Yes | Free, no key. Medical articles + extracts. |
 | **OpenFDA drug/label** | ✅ Yes | Free, no key. FDA labels with OTC + Rx fields. |
-| **RxNav/RxNorm** | ⬜ Standby | Client built but removed from pipeline (unnecessary latency). |
+| **RxNav/RxNorm** | ❌ No | Client built then deleted — heuristic extraction sufficient, added unnecessary latency. |
 | **DailyMed** | ❌ No | Redundant with OpenFDA. |
 | **Infermedica** | ❌ No | Commercial, rate-limited (100 req/d). |
 | **ClinicalTrials.gov** | ❌ No | Supplementary, not core. |
@@ -159,7 +156,7 @@ All three external services (Wiki, OpenFDA, Ollama) use shared `httpx.AsyncClien
 | `pubmed_client.py` | earlier | Poor relevance, XML overhead, API key required |
 | `semantic_scholar_client.py` | earlier | Severe 429 rate limiting |
 | `rag_pipeline.py` | earlier | Full redesign → `symptom_pipeline.py` |
-| `rxnav_client.py` | 2026-06-18 | Unwired — heuristic extraction sufficient |
+| `rxnav_client.py` | 2026-06-18 | Unwired then deleted — heuristic extraction sufficient |
 
 ---
 

@@ -19,7 +19,7 @@ This skill enforces the architectural constraints of the Medical Chatbot. Loaded
 ### Data Sources (Live APIs Only)
 - **Wikipedia MediaWiki:** `en.wikipedia.org/w/api.php` — raw query search (no suffix bias), plain-text extracts. Requires `User-Agent` header.
 - **OpenFDA Drug Label:** `api.fda.gov/drug/label.json` — Rx + OTC field extraction, DailyMed URLs. No key.
-- **RxNav/RxNorm:** Client exists at `rxnav_client.py` but is NOT wired in the pipeline (unwired 2026-06-18). Heuristic drug extraction from query + wiki text proved sufficient.
+- **RxNav/RxNorm:** Client was deleted — heuristic drug extraction from query + wiki text proved sufficient.
 - **Supabase:** Hosted PostgreSQL for session/message persistence + Supabase Auth for JWT-based authentication. No local database.
 - **NO vector stores, NO ChromaDB, NO FAISS.** All retrieval is live from the web.
 
@@ -71,7 +71,7 @@ Ollama qwen2.5:7b → SSE stream (token|citation|done|error|warning|info)
 - SSE connections must never hang — always emit `event: error` on failure before closing.
 
 ### Code Organization:
-- `backend/` — 13 Python modules (11 active + 1 standby + 1 init):
+- `backend/` — 12 Python modules (11 active + 1 init):
   - `main.py` — FastAPI server (SSE streaming route, session router, shutdown hooks)
   - `symptom_pipeline.py` — self-contained pipeline (prompt building, drug extraction, context formatting, streaming — all inline)
   - `wiki_client.py` — Wikipedia MediaWiki API (raw query search + extracts, no suffix bias)
@@ -83,7 +83,6 @@ Ollama qwen2.5:7b → SSE stream (token|citation|done|error|warning|info)
   - `routers/session_routes.py` — session CRUD API (GET/POST/PATCH/DELETE), auth-protected with ownership checks
   - `supabase_client.py` — Supabase client singleton (uses env vars)
   - `logging_setup.py` — structured logging with request-ID injection via contextvar
-  - `rxnav_client.py` — RxNorm drug name normalisation (UNWIRED — not called by pipeline, kept for reference)
   - `__init__.py`
 - `frontend/` — Next.js 16 App Router + TypeScript + Tailwind CSS:
   - `hooks/` — `useChatController`, `useChatReducer` (12 actions), `useChatStream`, `useSessionStore`, `useScrollManager`, `useAuth`

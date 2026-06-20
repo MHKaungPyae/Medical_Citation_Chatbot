@@ -34,7 +34,6 @@ Medical_Citation_Chatbot/
 │   ├── symptom_pipeline.py      # Full pipeline: wiki → drug extract → OpenFDA → LLM → citations
 │   ├── wiki_client.py           # MediaWiki API: search articles, get extracts
 │   ├── openfda_client.py        # OpenFDA drug/label: OTC + Rx field extraction, DailyMed links
-│   ├── rxnav_client.py          # RxNorm client (unwired — kept for reference)
 │   ├── config.py                # Centralised config + load_dotenv
 │   ├── retry.py                 # Shared HTTP retry with Retry-After parsing
 │   ├── session_store.py         # Supabase-backed session/message persistence
@@ -238,8 +237,6 @@ data: {"message": "Limited medical information found. Please see a doctor."}
 | **OpenFDA drug/label** | FDA-approved drug labels: indications, warnings, side effects, dosage | None |
 | **Ollama** | Local LLM inference via `/api/generate` with streaming | None |
 | **Supabase** | User auth (JWT), session/message storage (PostgreSQL) | Anon key + JWT secret |
-
-RxNav/RxNorm client exists (`backend/rxnav_client.py`) but is not wired into the pipeline — heuristic drug name extraction proved sufficient.
 
 All external APIs are free. Supabase free tier: 500MB DB, 50K monthly active users.
 

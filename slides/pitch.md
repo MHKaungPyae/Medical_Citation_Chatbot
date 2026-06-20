@@ -70,7 +70,7 @@ Clickable `[Wikipedia ↗]` and `[FDA ↗]` citations inline — every claim is 
 **Key design decisions:**
 - **No hardcoded prompts, no keyword classifiers, no drug lists.** The LLM handles everything generatively — the pipeline only provides retrieved context and minimal guidance.
 - Drug names extracted heuristically from query text (3-pass: capitalized, all-caps, lowercase 4-15 char), not matched against fixed lists.
-- Deleted 4 modules, unwired 1: prompts.py, query_classifier.py, classifier_data.py, pubmed_client.py (deleted) — rxnav_client.py (unwired, kept for reference). Each replaced by simpler, generative alternatives.
+- Deleted 5 modules: prompts.py, query_classifier.py, classifier_data.py, pubmed_client.py, rxnav_client.py — each replaced by simpler, generative alternatives.
 - Supabase Auth for JWT-based user accounts, PostgreSQL for persistent session/message storage.
 
 **Evidence of AI usage:**
