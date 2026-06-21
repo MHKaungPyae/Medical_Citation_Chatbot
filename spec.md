@@ -77,10 +77,9 @@ Streaming SSE endpoint. Accepts JSON:
 |--------|----------|---------|
 | `GET /api/sessions` | List user's sessions (most recent first) |
 | `POST /api/sessions` | Create new session |
-| `GET /api/sessions/{id}` | Get single session (ownership check) |
-| `PATCH /api/sessions/{id}` | Update session (e.g. title) |
+| `GET /api/sessions/{id}/messages` | Get messages for a session (ownership check) |
+| `PATCH /api/sessions/{id}` | Update session title (ownership check) |
 | `DELETE /api/sessions/{id}` | Delete session + messages (ownership check) |
-| `GET /api/sessions/{id}/messages` | Get messages for a session |
 
 ### 2.3 SSE Wire Format
 
@@ -173,7 +172,7 @@ Phase 7 — Persist conversation
 ### 2.5 Session Store
 
 - **Storage:** Supabase PostgreSQL (persistent across restarts)
-- **Tables:** `sessions` (id, user_id, title, created_at, updated_at), `messages` (id, session_id, role, content, created_at)
+- **Tables:** `chat_sessions` (id, user_id, title, created_at, updated_at), `messages` (id, session_id, role, content, citations_json, created_at)
 - **Window:** Last 6 turns (12 messages) fetched for prompt context
 - **Auth:** All operations require valid Supabase JWT; ownership enforced per user
 - **Format returned to prompt:**
@@ -264,7 +263,7 @@ sendMessage(query):
   1. Abort previous stream if active
   2. Dispatch ADD_USER_MESSAGE (optimistic)
   3. Dispatch CREATE_ASSISTANT_MESSAGE
-  4. Dispatch SET_STATUS("Searching medical sources...")
+  4. Dispatch SET_STATUS("Searching medical information...")
   5. fetch(POST /api/chat) with AbortController
   6. Read ReadableStream:
      - Buffer lines, split on \n, strip \r (CRLF-safe)
@@ -309,7 +308,7 @@ Inline markers `[[CITATION:N]]` in the response text are parsed by `MessageBubbl
 
 | State | Visual |
 |-------|--------|
-| **Idle** | EmptyState ("Describe your symptoms or ask any medical question...") |
+| **Idle** | EmptyState ("Medical Research Assistant" + example question chips) |
 | **Searching** | StatusBubble: "Searching medical sources..." |
 | **Streaming** | StreamingDots animation + token-by-token text appearing |
 | **Complete** | Full text + inline citations + citation pills |
