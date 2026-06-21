@@ -65,19 +65,15 @@ Clickable `[Wikipedia ↗]` and `[FDA ↗]` citations inline — every claim is 
 # How I built it
 <!-- 20s -->
 
-**Stack:** FastAPI + Next.js 16 + Ollama (`qwen2.5:7b`) + Supabase (Auth + PostgreSQL) + TypeScript + Tailwind
+**Stack:** FastAPI · Next.js 16 · Ollama (`qwen2.5:7b`) · Supabase · TypeScript · Tailwind
 
-**Key design decisions:**
-- **No hardcoded prompts, no keyword classifiers, no drug lists.** The LLM handles everything generatively — the pipeline only provides retrieved context and minimal guidance.
-- Drug names extracted heuristically from query text (3-pass: capitalized, all-caps, lowercase 4-15 char), not matched against fixed lists.
-- Deleted 5 modules: prompts.py, query_classifier.py, classifier_data.py, pubmed_client.py, rxnav_client.py — each replaced by simpler, generative alternatives.
-- Supabase Auth for JWT-based user accounts, PostgreSQL for persistent session/message storage.
+**Design:** No hardcoded prompts, no classifiers, no drug lists. LLM handles everything generatively. Drug names extracted heuristically (3-pass). Deleted 5 modules over time — each replaced by simpler alternatives.
 
-**Evidence of AI usage:**
-- **MCP:** `.claude/mcp.json` — GitHub MCP server for issue/PR management
-- **Skill:** `.claude/skills/medical-rag/SKILL.md` — enforces FastAPI + Ollama + live APIs + Supabase, forbids hardcoded prompts and classifiers
-- **Agent:** `.claude/agents/medical-rag-builder.md` — subagents for parallel API client development and adversarial code review
-- **Spec-Kit:** GitHub Spec-Kit installed with `/speckit-*` slash commands for spec-driven development
+**AI tooling used:**
+- **MCP** — GitHub server for issue/PR management
+- **Skill** — `SKILL.md` enforces stack constraints (FastAPI, Ollama, live APIs)
+- **Agent** — subagents for parallel builds + adversarial code review
+- **Spec-Kit** — spec-driven development with 11 slash commands
 
 ---
 
