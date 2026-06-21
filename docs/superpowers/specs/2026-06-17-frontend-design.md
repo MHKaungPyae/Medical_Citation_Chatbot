@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-A clean, warm-toned medical chatbot frontend built with Next.js (App Router), TypeScript, and Tailwind CSS. The UI streams responses from a FastAPI backend via Server-Sent Events (SSE) and renders clickable citation pills linking to PubMed and FDA sources.
+A clean, warm-toned medical chatbot frontend built with Next.js (App Router), TypeScript, and Tailwind CSS. The UI streams responses from a FastAPI backend via Server-Sent Events (SSE) and renders clickable citation pills linking to medical wikipedia and FDA sources.
 
 ---
 
@@ -22,8 +22,8 @@ Approachable and human, like a caring pharmacist. Soft warm tones, generous roun
 | Token | Hex | Tailwind Class (custom) | Usage |
 |-------|-----|------------------------|-------|
 | Teal primary | `#14b8a6` | `teal-primary` | Buttons, user message bubbles, accent dots, send button |
-| Teal light | `#d4f7f0` | `teal-light` | PubMed citation pills, status bubbles, hover states |
-| Teal dark text | `#0f766e` | `teal-dark` | PubMed citation pill text, status text |
+| Teal light | `#d4f7f0` | `teal-light` | Wikipedia citation pills, status bubbles, hover states |
+| Teal dark text | `#0f766e` | `teal-dark` | Wikipedia citation pill text, status text |
 | Amber light | `#fef3c7` | `amber-light` | FDA citation pills |
 | Amber dark text | `#92400e` | `amber-dark` | FDA citation pill text |
 | Cream background | `#faf5f0` | `cream-bg` | Page background |
@@ -62,7 +62,7 @@ App
 │   ├── HeaderBar ("Medical Assistant" title + warm indicator dot)
 │   ├── ChatContainer
 │   │   ├── EmptyState (welcome card + 3 clickable example chips)
-│   │   ├── StatusBubble (inline: "Searching PubMed & OpenFDA...")
+│   │   ├── StatusBubble (inline: "Searching medical information...")
 │   │   └── MessageList
 │   │       ├── UserMessage (right-aligned, teal bubble)
 │   │       └── AssistantMessage (left-aligned, white card)
@@ -75,13 +75,13 @@ App
 
 ### 3.1 Component Responsibilities
 
-**Sidebar** — Collapsible panel (toggle via hamburger or swipe). Lists past conversations by title from `localStorage`. Active conversation has teal highlight. Each item shows truncated first query as title + relative timestamp. "New Chat" button at top.
+**Sidebar** — Collapsible panel (toggle via hamburger or swipe). Lists past conversations from the Supabase-backed session store. Active conversation has teal highlight. Each item shows truncated first query as title + relative timestamp. "New Chat" button at top. User profile with sign-out at bottom.
 
-**NewChatButton** — Full-width button, teal, `+ New Chat` label. Resets the message list, generates a new `session_id`, clears the chat view.
+**NewChatButton** — Full-width button, teal, `+ New Chat` label. Resets the message list, creates a new session via the API, clears the chat view.
 
-**ConversationList** — Scrollable list of `ConversationItem` components. Sorted newest-first. Stores sessions in `localStorage` keyed by `session_id`.
+**ConversationList** — Scrollable list of `ConversationItem` components. Sorted newest-first. Sessions stored in Supabase PostgreSQL, fetched via authenticated API calls.
 
-**ConversationItem** — Displays truncated conversation title, relative timestamp. Click to load that session's messages (from localStorage). Active item has `bg-teal-light` background.
+**ConversationItem** — Displays truncated conversation title, relative timestamp. Click to load that session's messages (from API). Active item has `bg-teal-light` background.
 
 **HeaderBar** — Simple bar: teal dot (8px circle, `#14b8a6`) + "Medical Assistant" in `font-semibold`. Fixed at top of MainArea.
 
@@ -89,7 +89,7 @@ App
 
 **EmptyState** — Centered card with: 🩺 emoji icon, "Medical Research Assistant" heading, subtitle explaining the tool, and 3 clickable example chips. Tapping a chip auto-fills and submits the input. Only shown when `messages.length === 0`.
 
-**StatusBubble** — Left-aligned ghost bubble with teal-light background. Shows transient status text: "Searching PubMed & OpenFDA...", "Streaming response...", "Searching (this may take a moment)...". Appears between user message and the assistant's streaming response. Disappears when `done` event arrives.
+**StatusBubble** — Left-aligned ghost bubble with teal-light background. Shows transient status text: "Searching medical information...". Appears between user message and the assistant's streaming response. Disappears when `done` event arrives.
 
 **MessageList** — Renders the messages array. Each message is `{role, content, citations, status}` where status is `streaming | done | error`.
 
@@ -101,7 +101,7 @@ App
 
 **StreamingDots** — Three `<div>` circles (6px), teal primary, with CSS animation (`animate-pulse` with staggered `animation-delay`). Rendered below the StreamingText while status is `streaming`. Hidden on `done`.
 
-**CitationPills** — Inline `<span>` elements rendered inside the AssistantMessage text. PubMed pills: `bg-teal-light text-teal-dark`. FDA pills: `bg-amber-light text-amber-dark`. Both: `rounded-full px-2 py-0.5 text-xs font-medium`. Click opens URL in `target="_blank" rel="noopener noreferrer"`. Format: `[1] PubMed ↗` or `[2] FDA Label ↗`.
+**CitationPills** — Inline `<span>` elements rendered inside the AssistantMessage text. Wikipedia pills: `bg-teal-light text-teal-dark`. FDA pills: `bg-amber-light text-amber-dark`. Both: `rounded-full px-2 py-0.5 text-xs font-medium`. Click opens URL in `target="_blank" rel="noopener noreferrer"`. Format: `[1] Wikipedia ↗` or `[2] FDA ↗`.
 
 **AutoExpandTextarea** — A `<textarea>` that starts at 1 row (40px), grows to max 5 rows (120px), then scrolls internally. Submit on Enter (Shift+Enter for newline). Placeholder: "Ask a medical question...".
 
@@ -120,7 +120,7 @@ event: token
 data: {"text": "Aspirin"}
 
 event: citation
-data: {"index": 1, "url": "https://pubmed.ncbi.nlm.nih.gov/12345/", "title": "Aspirin: Mechanism and Clinical Use", "source": "pubmed"}
+data: {"index": 1, "url": "https://en.wikipedia.org/wiki/Aspirin", "title": "Aspirin", "source": "wikipedia"}
 
 event: done
 data: {"full_text": "...", "citations": [...]}
@@ -154,13 +154,14 @@ type Action =
   | { type: 'CREATE_ASSISTANT_MESSAGE' }
   | { type: 'APPEND_TOKEN'; text: string }
   | { type: 'ADD_CITATION'; citation: Citation }
-  | { type: 'SET_STREAMING_DONE' }
+  | { type: 'SET_STREAMING_DONE'; fullText?: string; citations?: Citation[] }
   | { type: 'SET_ERROR'; message: string }
   | { type: 'SET_WARNING'; message: string }
   | { type: 'SET_STATUS'; status: string }
   | { type: 'HIDE_STATUS' }
-  | { type: 'CLEAR_CHAT' }
-  | { type: 'LOAD_SESSION'; messages: Message[] }
+  | { type: 'CLEAR_CHAT'; sessionId?: string }
+  | { type: 'LOAD_SESSION'; messages: Message[]; sessionId?: string }
+  | { type: 'SET_SESSION_ID'; sessionId: string }
 ```
 
 ### Message Shape
@@ -170,7 +171,10 @@ interface Citation {
   index: number;
   url: string;
   title: string;
-  source: 'pubmed' | 'fda';
+  source: 'wikipedia' | 'fda';
+  authors?: string;
+  year?: string | number;
+  journal?: string;
 }
 
 interface Message {
@@ -196,7 +200,7 @@ interface Session {
 }
 ```
 
-Sessions persist in `localStorage` under key `medical-chatbot-sessions`. The active `session_id` is stored under `medical-chatbot-active-session`.
+Sessions persist in Supabase PostgreSQL via authenticated API calls (`/api/sessions`). The frontend uses `useSessionStore` hook backed by `authenticatedFetch`.
 
 ---
 
@@ -206,7 +210,7 @@ Sessions persist in `localStorage` under key `medical-chatbot-sessions`. The act
 User clicks Send
   → dispatch ADD_USER_MESSAGE
   → dispatch CREATE_ASSISTANT_MESSAGE  
-  → dispatch SET_STATUS("Searching PubMed & OpenFDA...")
+  → dispatch SET_STATUS("Searching medical information...")
   → fetch POST /api/chat {query, session_id}
       ├── ReadableStream reader
       ├── Parse SSE lines
@@ -234,14 +238,12 @@ User clicks Send
 | State | Visual |
 |-------|--------|
 | **Initial (empty)** | Welcome card centered: 🩺 + heading + subtitle + 3 example chips |
-| **Searching** | StatusBubble: "Searching PubMed & OpenFDA..." with animated teal dots |
+| **Searching** | StatusBubble: "Searching medical information..." with animated teal dots |
 | **Streaming** | AssistantMessage grows token by token. StreamingDots pulse below. Input shows Stop button. |
 | **Complete** | Full text visible. CitationPills rendered as colored badges. Input re-enabled. StatusBubble gone. |
 | **Error (timeout)** | Red banner in assistant bubble: "The model took too long to respond. Please try again." Input enabled. |
 | **Error (API down)** | Red banner: "Could not reach the server. Please check your connection." Input enabled. |
-| **Warning (no data)** | Yellow banner: "No live data found — response may be based on training data." Message still shown. |
-| **Empty results** | Assistant message: "I could not find relevant medical literature or drug safety data on this topic." No citations. |
-| **Non-medical query** | Assistant message: "Please ask a medical or drug-related question. I'm designed to search PubMed and FDA databases." No API call made. |
+| **Warning (no data)** | Yellow banner: "Limited medical information found. Please see a doctor for proper diagnosis." Message still shown. |
 | **Long message** | ChatContainer scrolls. "Scroll to bottom" button appears if user has scrolled up during streaming. |
 | **Mobile** | Sidebar collapses to hamburger menu. Full-width chat. Input stays at bottom with `position: sticky`. |
 
@@ -252,29 +254,43 @@ User clicks Send
 ```
 frontend/
 ├── app/
-│   ├── layout.tsx          # Root layout, fonts, metadata
-│   ├── page.tsx            # Main chat page
-│   └── globals.css         # Tailwind directives + custom color tokens
+│   ├── layout.tsx          # Root layout, metadata, AuthProvider wrapper
+│   ├── page.tsx            # Main chat page (auth-protected)
+│   ├── login/page.tsx      # Login page
+│   ├── register/page.tsx   # Registration page
+│   └── globals.css         # Tailwind import + custom color tokens
 ├── components/
-│   ├── Sidebar.tsx
-│   ├── ChatContainer.tsx
-│   ├── MessageList.tsx
-│   ├── MessageBubble.tsx   # Handles both user and assistant rendering
-│   ├── CitationPill.tsx
-│   ├── StatusBubble.tsx
-│   ├── StreamingDots.tsx
-│   ├── EmptyState.tsx
+│   ├── AuthProvider.tsx     # React context for auth state
+│   ├── AuthCard.tsx         # Shared auth page layout
+│   ├── AuthInput.tsx        # Styled form input
+│   ├── AuthButton.tsx       # Submit button with loading state
+│   ├── Sidebar.tsx          # Conversation list + user profile
+│   ├── ChatContainer.tsx    # Messages + input area
+│   ├── MessageList.tsx      # Renders message array
+│   ├── MessageBubble.tsx    # User + assistant message rendering
+│   ├── InlineCitation.tsx   # [[CITATION:N]] → clickable badges
+│   ├── CitationPill.tsx     # Rich citation display below messages
+│   ├── StatusBubble.tsx     # Loading indicator
+│   ├── StreamingDots.tsx    # Animated dots while streaming
+│   ├── EmptyState.tsx       # Welcome card + example chips
 │   ├── AutoExpandTextarea.tsx
-│   └── SendButton.tsx
+│   ├── SendButton.tsx       # Send/stop button
+│   ├── ErrorBoundary.tsx    # Crash recovery
+│   └── Icons.tsx            # SVG icon components
 ├── hooks/
-│   ├── useChatReducer.ts   # useReducer with all actions
-│   ├── useChatStream.ts    # SSE fetch + AbortController
-│   └── useSessionStore.ts  # localStorage session persistence
+│   ├── useChatController.ts # Orchestrator hook
+│   ├── useChatReducer.ts    # useReducer with 12 actions
+│   ├── useChatStream.ts     # SSE fetch + AbortController
+│   ├── useSessionStore.ts   # API-backed session CRUD
+│   ├── useScrollManager.ts  # Scroll-to-bottom logic
+│   └── useAuth.ts           # Supabase auth hook
 ├── lib/
-│   ├── types.ts            # Citation, Message, Session interfaces
-│   ├── constants.ts        # Color tokens, example questions, status messages
-│   └── utils.ts            # generateUUID, truncateTitle, formatTimestamp
-└── tailwind.config.ts      # Extended with custom warm-wellness colors
+│   ├── types.ts             # Citation, Message, Session, ChatAction types
+│   ├── constants.ts         # Example questions, status messages, API_URL
+│   ├── utils.ts             # generateUUID, truncateTitle, formatTimestamp
+│   ├── supabase.ts          # Supabase client singleton
+│   └── api.ts               # authenticatedFetch helper
+└── postcss.config.mjs        # Tailwind v4 PostCSS plugin
 ```
 
 ---
@@ -282,18 +298,18 @@ frontend/
 ## 9. Testing Plan
 
 ### Unit Tests (Vitest)
-- `CitationPill` — renders PubMed pill in teal, FDA pill in amber, opens URL on click
+- `CitationPill` — renders Wikipedia pill in teal, FDA pill in amber, opens URL on click
 - `StreamingDots` — renders 3 dots with staggered animation delays
 - `StatusBubble` — renders correct text, hidden when status is null
 - `EmptyState` — renders heading, subtitle, 3 chips; clicking chip calls submit callback
 - `AutoExpandTextarea` — submit on Enter, newline on Shift+Enter, max 5 rows
 - `useChatReducer` — each action produces correct state transitions
-- `useSessionStore` — save/load/delete sessions from localStorage
+- `useSessionStore` — CRUD sessions via authenticated API calls
 
 ### Integration Tests (Vitest + MSW)
 - Full streaming flow: mock SSE endpoint → verify tokens append → citations render → done hides dots
 - Error flow: mock 500 → verify error banner shows → input re-enabled
-- Session load: mock localStorage → load old session → messages render correctly
+- Session load: mock API → load old session → messages render correctly
 
 ---
 
@@ -301,25 +317,22 @@ frontend/
 
 ```json
 {
-  "next": "^14.0",
-  "react": "^18.3",
-  "react-dom": "^18.3",
-  "tailwindcss": "^3.4",
-  "typescript": "^5.4",
-  "vitest": "^1.6",
-  "@testing-library/react": "^15.0",
-  "msw": "^2.3"
+  "next": "16.2.9",
+  "react": "19.2.4",
+  "react-dom": "19.2.4",
+  "@supabase/supabase-js": "^2.108.2",
+  "tailwindcss": "^4",
+  "typescript": "^5"
 }
 ```
 
-No additional UI libraries — all components are custom-built with Tailwind. No shadcn/ui needed since we're not using Radix primitives for this simple chat interface.
+No additional UI libraries — all components are custom-built with Tailwind. Supabase handles authentication and database.
 
 ---
 
 ## 11. Non-Goals (What This Spec Does NOT Cover)
 
-- Backend implementation (see plan.md Phases 1-3)
-- Authentication or user accounts
+- Backend implementation (see backend code)
 - Dark mode (Warm Wellness is light-mode only for v1)
 - File upload / image analysis
 - Multi-language support

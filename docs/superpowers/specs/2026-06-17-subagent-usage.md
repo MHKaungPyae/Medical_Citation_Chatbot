@@ -1,6 +1,7 @@
 # Subagent Usage Log: Medical Citation Chatbot
 
 **Last Updated:** 2026-06-17
+**Status:** Historical record — documents development phases from 2026-06-17. Some referenced files (PubMed client, query classifier) were later deleted and replaced by Wikipedia + heuristic drug extraction. See `.claude/agents/medical-rag-builder.md` for current agent definition.
 
 ---
 
@@ -98,16 +99,13 @@ Sonnet writes clean `httpx` wrappers and keyword lists efficiently. Opus is rese
 
 ---
 
-## Future Subagent Opportunities
+## Subagent Usage Summary
 
-| Phase | What to Parallelize | Model |
-|-------|-------------------|-------|
-| Phase 1 | Already built sequentially (single FastAPI file) | — |
-| Phase 2 | ✅ PubMed + OpenFDA + Classifier (completed) | Sonnet |
-| Phase 3 | Prompt template + conversation history + eval script | Sonnet |
-| Phase 4 | Already built | — |
-| Phase 3 tests | ✅ 3 test agents + 1 code review Opus (completed) | Sonnet + Opus |
-| Code Review | ✅ Running: Opus reviewing all 5 backend files | Opus |
+| Phase | What Was Parallelized | Model | Status |
+|-------|----------------------|-------|--------|
+| Phase 2 | PubMed client + OpenFDA client + Query classifier | Sonnet | ✅ Completed (PubMed + classifier later deleted, replaced by Wikipedia + heuristic extraction) |
+| Phase 3 tests | 3 test agents + 1 code review | Sonnet + Opus | ✅ Completed |
+| Code Review | Adversarial review of backend files | Opus | ✅ Completed |
 
 ---
 
@@ -146,14 +144,14 @@ Sonnet writes clean `httpx` wrappers and keyword lists efficiently. Opus is rese
 | **Status** | ⚠️ Agent blocked by bash permission — tests run by main thread instead |
 | **Result** | **ALL 13 TESTS PASSED** — 589 drugs, 440 conditions, correct classification for drug/condition/both/non_medical queries. `extract_drug_name` works correctly. |
 
-### Subagent 4: Code Review (In Progress) 🔄
+### Subagent 4: Code Review ✅
 
 | Property | Value |
 |----------|-------|
 | **Agent ID** | `adea17b0f63c4aaff` |
 | **Model** | **Opus** |
-| **Task** | Deep review of all 5 backend files — bugs, edge cases, code quality, security |
-| **Status** | Running |
+| **Task** | Deep review of backend files — bugs, edge cases, code quality, security |
+| **Status** | ✅ Completed |
 
 ### Lessons Learned
 

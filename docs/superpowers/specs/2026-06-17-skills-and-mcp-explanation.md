@@ -76,7 +76,7 @@
 #### Fetch / Web Search MCP
 **What it does:** Makes raw HTTP requests and web searches with fewer restrictions than built-in tools.
 
-**Why NOT needed:** Claude Code already has `WebFetch` (fetch any URL) and `WebSearch` (web search) built in. Adding this MCP would be 100% redundant — it does the same thing through a different wrapper. Also, the project's backend calls PubMed and OpenFDA via Python's `httpx` at runtime — Claude Code doesn't need to call them during development beyond verifying they work (which `curl` via Bash can do).
+**Why NOT needed:** Claude Code already has `WebFetch` (fetch any URL) and `WebSearch` (web search) built in. Adding this MCP would be 100% redundant — it does the same thing through a different wrapper. Also, the project's backend calls Wikipedia and OpenFDA via Python's `httpx` at runtime — Claude Code doesn't need to call them during development beyond verifying they work (which `curl` via Bash can do).
 
 ---
 
@@ -89,13 +89,14 @@
 **Rules it enforces:**
 - Always use FastAPI (not Flask/Django)
 - Always use Next.js + React + Tailwind (not Vue/Svelte)
-- Always use live PubMed/OpenFDA APIs (no ChromaDB, FAISS, or any local vector database)
-- Always use Ollama with `medgemma:4b-it` (no cloud LLM APIs)
+- Always use live Wikipedia/OpenFDA APIs (no ChromaDB, FAISS, or any local vector database)
+- Always use Ollama with `qwen2.5:7b` (no cloud LLM APIs)
 - SSE for streaming (not WebSockets)
 - `httpx.AsyncClient` for all outbound HTTP
 - `[[CITATION:N]]` format for citations
 - `asyncio.gather()` for concurrent API calls
 - Proper error handling: every external call has timeout, never crashes the caller
+- Supabase Auth for user authentication, PostgreSQL for session/message persistence
 
 **Why needed:** Without this skill, Claude Code might suggest using ChromaDB for retrieval (which is the default RAG pattern in most codebases), or Flask (which is more common in Python tutorials), or OpenAI's API (which is the default LLM choice). The skill prevents these architectural violations before they happen.
 
@@ -103,32 +104,28 @@
 
 ---
 
-## Part 4: What Will Be Used in Each Phase
+## Part 4: Tools Used During Development
 
-| Phase | Skills | MCP |
-|-------|--------|-----|
-| **Phase 0** (Setup) | `medical-rag` (project skill, auto-loaded) | None |
-| **Phase 1** (Backend) | `test-driven-development`, `systematic-debugging` | Context7 (FastAPI docs) |
-| **Phase 2** (Data Clients) | `subagent-driven-development` (parallel PubMed + OpenFDA), `test-driven-development` | Context7 (httpx docs) |
-| **Phase 3** (RAG Fusion) | `brainstorming` (prompt design), `verification-before-completion` (eval run) | Context7 (FastAPI SSE docs) |
-| **Phase 4** (Frontend) | `ui-ux-pro-max` (component styling), `subagent-driven-development` (parallel components) | Context7 (React/Next.js docs) |
-| **Review** | `requesting-code-review`, `receiving-code-review` | None |
-| **Wrap-up** | `finishing-a-development-branch` | None |
+| Tool | Type | Used? | Purpose |
+|------|------|-------|---------|
+| `medical-rag` | Skill (project) | ✅ Yes | Enforces architectural constraints on every session |
+| `medical-rag-builder` | Agent | ✅ Yes | Subagents for parallel implementation (sonnet) + adversarial review (opus) |
+| GitHub MCP | MCP | ✅ Yes | Issue/PR management via `.claude/mcp.json` |
+| Spec-Kit (11 skills) | Skills | ✅ Yes | Spec-driven development: specify, plan, implement, tasks, clarify, converge, etc. |
+| Context7 | MCP | Available | Up-to-date library docs (FastAPI, httpx, Next.js, Supabase) |
 
----
+### Spec-Kit Skills Installed
 
-## Summary
-
-| Tool | Type | Used Now? | Used Later? |
-|------|------|-----------|-------------|
-| `brainstorming` | Skill | ✅ Yes (this session) | Phase 3 prompt design |
-| `ui-ux-pro-max` | Skill | ✅ Yes (style selection) | Phase 4 component building |
-| `medical-rag` | Skill (project) | ✅ Yes (rules enforced) | Every phase |
-| Context7 | MCP | Available (not used) | Phase 1-4 code lookups |
-| `caveman` | Skill | Available (not used) | If session gets long |
-| `test-driven-development` | Skill | Not yet | Phase 1-2 |
-| `subagent-driven-development` | Skill | Not yet | Phase 2, 4 |
-| `verification-before-completion` | Skill | Not yet | Phase 3 |
-| `requesting-code-review` | Skill | Not yet | After each phase |
-| Puppeteer MCP | MCP | Not installed | Optional: Phase 4 E2E tests |
-| Fetch/Web Search MCP | MCP | Not installed | Never needed |
+| Skill | Purpose |
+|-------|---------|
+| `speckit-specify` | Create/update feature specifications |
+| `speckit-plan` | Create implementation plans |
+| `speckit-implement` | Execute implementation tasks |
+| `speckit-tasks` | Generate task breakdowns |
+| `speckit-clarify` | Clarify ambiguous requirements |
+| `speckit-converge` | Converge on decisions |
+| `speckit-constitution` | Project constitution/principles |
+| `speckit-checklist` | Verification checklists |
+| `speckit-analyze` | Analyze specifications |
+| `speckit-taskstoissues` | Convert tasks to GitHub issues |
+| `speckit-agent-context-update` | Update agent context |
