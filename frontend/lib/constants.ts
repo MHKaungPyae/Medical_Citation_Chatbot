@@ -13,9 +13,4 @@ export const ERROR_MESSAGES = {
   UNKNOWN: 'Something went wrong. Please try again.',
 };
 
-export const STORAGE_KEYS = {
-  SESSIONS: 'medical-chatbot-sessions',
-  ACTIVE_SESSION: 'medical-chatbot-active-session',
-};
-
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';

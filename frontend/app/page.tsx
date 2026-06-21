@@ -66,13 +66,6 @@ export default function Home() {
               <h1 className="text-sm font-semibold text-warm-gray">Medical Assistant</h1>
             </div>
 
-            <button
-              onClick={handleNewChat}
-              className="ml-auto hidden rounded-lg px-3 py-1.5 text-xs font-medium text-teal-dark
-                         transition-all hover:bg-teal-light md:block"
-            >
-              + New Chat
-            </button>
           </header>
 
           <ChatContainer
