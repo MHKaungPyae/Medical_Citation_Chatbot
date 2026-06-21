@@ -30,7 +30,7 @@ A generative RAG chatbot that retrieves live data from **Wikipedia** and **OpenF
 ```
 Medical_Citation_Chatbot/
 ├── backend/
-│   ├── main.py                  # FastAPI server, route dispatch, shutdown hooks
+│   ├── main.py                  # FastAPI server, SSE streaming route, shutdown hooks
 │   ├── symptom_pipeline.py      # Full pipeline: wiki → drug extract → OpenFDA → LLM → citations
 │   ├── wiki_client.py           # MediaWiki API: search articles, get extracts
 │   ├── openfda_client.py        # OpenFDA drug/label: OTC + Rx field extraction, DailyMed links
@@ -38,27 +38,30 @@ Medical_Citation_Chatbot/
 │   ├── retry.py                 # Shared HTTP retry with Retry-After parsing
 │   ├── session_store.py         # Supabase-backed session/message persistence
 │   ├── auth.py                  # JWT verification (python-jose)
-│   ├── routers/
-│   │   └── session_routes.py    # Session CRUD API (auth-protected)
 │   ├── supabase_client.py       # Supabase client singleton
 │   ├── logging_setup.py         # Structured logging with request-ID injection
+│   ├── routers/
+│   │   └── session_routes.py    # Session CRUD API (auth-protected)
 │   └── requirements.txt
 ├── frontend/
 │   ├── app/
-│   │   ├── login/page.tsx       # Login page
-│   │   ├── register/page.tsx    # Register page
 │   │   ├── layout.tsx           # Root layout (AuthProvider wraps all)
 │   │   ├── page.tsx             # Main chat page (auth-protected)
-│   │   └── globals.css
-│   ├── components/              # ChatContainer, MessageBubble, Sidebar, AuthCard, AuthInput, …
+│   │   ├── login/page.tsx       # Login page
+│   │   ├── register/page.tsx    # Register page
+│   │   └── globals.css          # Tailwind + custom color tokens
+│   ├── components/              # ChatContainer, MessageBubble, Sidebar, AuthProvider, …
 │   ├── hooks/                   # useChatController, useChatStream, useAuth, useSessionStore, …
 │   ├── lib/                     # types, constants, utils, supabase client, api wrapper
 │   └── package.json
 ├── .claude/
 │   ├── skills/medical-rag/      # Project-scoped Claude Code skill
-│   └── agents/                  # Agent definitions
-├── plan/                        # Plans with phases (project-overview, add-database, auth-ui)
-├── spec.md                      # System specification (definitive doc)
+│   └── agents/                  # Subagent definitions
+├── docs/                        # Development documentation and specs
+├── plan/                        # Plans with phases
+├── slides/                      # Pitch deck (Marp)
+├── spec.md                      # System specification
+├── report.md                    # Project report
 ├── README.md                    # This file
 └── CLAUDE.md                    # Claude Code instructions
 ```
@@ -99,6 +102,7 @@ create table messages (
   session_id uuid references chat_sessions(id) on delete cascade not null,
   role text not null check (role in ('user', 'assistant')),
   content text not null,
+  citations_json jsonb,
   created_at timestamptz default now()
 );
 
@@ -141,6 +145,7 @@ SUPABASE_JWT_SECRET=<your-jwt-secret>
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 Find these values in your Supabase dashboard: **Settings → API**.
