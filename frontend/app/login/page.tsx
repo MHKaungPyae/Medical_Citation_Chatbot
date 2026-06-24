@@ -50,7 +50,7 @@ export default function LoginPage() {
       footer={
         <>
           Don&apos;t have an account?{' '}
-          <Link href="/register" className="font-medium text-teal-primary hover:text-teal-dark">
+          <Link href="/register" className="font-medium text-indigo-400 hover:text-indigo-300">
             Sign up
           </Link>
         </>
@@ -58,7 +58,7 @@ export default function LoginPage() {
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-xl border border-red-200 bg-error-bg px-4 py-3 text-sm text-error-red">
+          <div className="rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-400">
             {error}
           </div>
         )}

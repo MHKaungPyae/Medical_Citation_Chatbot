@@ -14,17 +14,17 @@ export default function AuthCard({ title, subtitle, children, footer }: AuthCard
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md animate-fade-in">
         {/* Card */}
-        <div className="rounded-2xl border border-warm-border bg-white/80 backdrop-blur-md p-8 shadow-md">
+        <div className="rounded-2xl border border-white/15 bg-black/25 backdrop-blur-md p-8 shadow-lg">
           <div className="mb-6 text-center">
-            <h2 className="text-lg font-semibold text-warm-gray">{title}</h2>
-            <p className="mt-1 text-sm text-muted-warm">{subtitle}</p>
+            <h2 className="text-lg font-semibold text-white">{title}</h2>
+            <p className="mt-1 text-sm text-white/60">{subtitle}</p>
           </div>
 
           {children}
         </div>
 
         {/* Footer link */}
-        <div className="mt-4 text-center text-sm text-muted-warm">
+        <div className="mt-4 text-center text-sm text-white/60">
           {footer}
         </div>
       </div>

@@ -27,7 +27,7 @@ export default function AuthInput({
 }: AuthInputProps) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-warm-gray">
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-white/80">
         {label}
       </label>
       <input
@@ -38,16 +38,16 @@ export default function AuthInput({
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         autoComplete={autoComplete}
-        className={`w-full rounded-xl border px-4 py-2.5 text-sm text-warm-gray
-                   placeholder-muted-warm outline-none transition-all
+        className={`w-full rounded-xl border px-4 py-2.5 text-sm text-white
+                   placeholder-white/40 outline-none transition-all
                    disabled:cursor-not-allowed disabled:opacity-50
                    ${error
-                     ? 'border-error-red focus:ring-2 focus:ring-error-red/30'
-                     : 'border-warm-border focus:border-teal-primary focus:ring-2 focus:ring-teal-primary/30'
+                     ? 'border-red-400 focus:ring-2 focus:ring-red-400/30'
+                     : 'border-white/15 bg-white/5 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30'
                    }`}
       />
       {error && (
-        <p className="mt-1.5 text-xs text-error-red">{error}</p>
+        <p className="mt-1.5 text-xs text-red-400">{error}</p>
       )}
     </div>
   );
