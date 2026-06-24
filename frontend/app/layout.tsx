@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/components/AuthProvider';
+import ShaderBackground from '@/components/ui/shader-background';
 
 export const metadata: Metadata = {
   title: 'Medical Symptom Checker',
@@ -14,6 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body className="h-full antialiased">
+        <ShaderBackground />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

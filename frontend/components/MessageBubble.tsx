@@ -34,11 +34,11 @@ function MessageBubble({ message }: MessageBubbleProps) {
   return (
     <div className="mb-3 flex animate-fade-in items-start">
       <div className="max-w-[85%]">
-        <div className="rounded-2xl rounded-bl-md border border-warm-border bg-white px-4 py-3 shadow-sm">
-          <p className="text-sm leading-relaxed text-warm-gray whitespace-pre-wrap">
+        <div className="rounded-2xl rounded-bl-md border border-white/15 bg-black/25 backdrop-blur-sm px-4 py-3 shadow-sm">
+          <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">
             {renderedContent}
             {message.status === 'streaming' && !message.content && (
-              <span className="text-muted-warm italic">Thinking...</span>
+              <span className="text-white/50 italic">Thinking...</span>
             )}
           </p>
 
@@ -49,7 +49,7 @@ function MessageBubble({ message }: MessageBubbleProps) {
 
           {/* Citation pills shown only when done and citations exist */}
           {message.status === 'done' && message.citations.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5 border-t border-warm-border/50 pt-2.5">
+            <div className="mt-3 flex flex-wrap gap-1.5 border-t border-white/10 pt-2.5">
               {message.citations.map((c) => (
                 <CitationPill key={c.index} citation={c} />
               ))}

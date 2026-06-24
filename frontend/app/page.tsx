@@ -35,7 +35,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-full bg-cream-bg">
+    <div className="flex h-full">
 
       <Sidebar
         isOpen={sidebarOpen}
@@ -51,10 +51,10 @@ export default function Home() {
 
       <ErrorBoundary>
         <div className="flex flex-1 flex-col overflow-hidden">
-          <header className="flex items-center gap-3 border-b border-warm-border bg-white px-4 py-3">
+          <header className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="rounded-lg p-1.5 text-muted-warm transition-colors hover:bg-cream-bg hover:text-warm-gray md:hidden"
+              className="rounded-lg p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white md:hidden"
               aria-label="Toggle sidebar"
               aria-expanded={sidebarOpen}
             >
@@ -63,7 +63,7 @@ export default function Home() {
 
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-teal-primary" />
-              <h1 className="text-sm font-semibold text-warm-gray">Medical Assistant</h1>
+              <h1 className="text-sm font-semibold text-white">Medical Assistant</h1>
             </div>
 
           </header>

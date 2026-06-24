@@ -50,7 +50,7 @@ export default function AutoExpandTextarea({
       maxLength={maxLength}
       rows={1}
       className="flex-1 resize-none border-0 bg-transparent py-2 text-sm
-                 text-warm-gray placeholder-muted-warm outline-none
+                 text-white placeholder-white/50 outline-none
                  disabled:cursor-not-allowed disabled:opacity-50"
       style={{ scrollbarWidth: 'thin' }}
     />

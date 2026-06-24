@@ -59,8 +59,8 @@ function ChatContainer({
           <button
             onClick={() => { scrollToBottom(); setUserScrolledUp(false); }}
             className="sticky bottom-4 mx-auto flex items-center gap-1.5 rounded-full
-                       border border-warm-border bg-white px-4 py-2 text-xs text-muted-warm
-                       shadow-md transition-all hover:text-warm-gray"
+                       border border-white/20 bg-black/30 backdrop-blur-sm px-4 py-2 text-xs text-white/70
+                       shadow-md transition-all hover:text-white"
           >
             <IconChevronDown size={12} />
             Scroll to bottom
@@ -68,8 +68,15 @@ function ChatContainer({
         )}
       </div>
 
-      <div className="sticky bottom-0 bg-white/80 backdrop-blur-sm px-4 py-3">
-        <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border border-warm-border bg-white px-4 py-1 shadow-sm">
+      <div className="sticky bottom-0 px-4 py-3" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.3), transparent)', backdropFilter: 'blur(12px)' }}>
+        <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl px-4 py-1"
+          style={{
+            background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(124,58,237,0.1), rgba(99,102,241,0.08))',
+            border: '1px solid rgba(255,255,255,0.15)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 16px rgba(0,0,0,0.2), 0 0 20px rgba(99,102,241,0.1)',
+            backdropFilter: 'blur(16px)',
+          }}
+        >
           <AutoExpandTextarea
             value={inputValue}
             onChange={onInputChange}
@@ -83,7 +90,7 @@ function ChatContainer({
             onStop={onStop}
           />
         </div>
-        <p className="mt-1.5 text-center text-xs text-muted-warm">
+        <p className="mt-1.5 text-center text-xs text-white/50">
           Press Enter to send · Shift+Enter for new line
         </p>
       </div>
