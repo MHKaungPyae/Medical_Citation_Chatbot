@@ -1,7 +1,7 @@
 # System Specification: Medical Citation Chatbot
 
 > **Version:** 0.1.0  
-> **Last updated:** 2026-06-18  
+> **Last updated:** 2026-06-27  
 > **Scope:** This document describes the system *as built*, not as planned. For roadmap and history see `plan/project-overview/`.
 
 ---
@@ -24,12 +24,10 @@ User → Next.js (:3000) → FastAPI (:8000) → Wikipedia / OpenFDA / Ollama
 | Backend | FastAPI + Python 3.12 |
 | Streaming | Server-Sent Events (SSE) over HTTP |
 | Text LLM | `medgemma1.5:4b-it-q8_0` via Ollama (local) |
-| Vision LLM | `llava:7b` via Ollama (fast image analysis) |
 | APIs | Wikipedia MediaWiki, OpenFDA Drug Label |
 | HTTP | `httpx` (async) |
 | Auth | Supabase Auth (JWT) + `python-jose` verification |
 | Database | Supabase PostgreSQL (sessions, messages, profiles) |
-| Storage | Supabase Storage (image uploads) |
 
 ---
 
@@ -42,18 +40,16 @@ main.py
   ├── symptom_pipeline.py              ← self-contained; no hardcoded prompts
   │     ├── wiki_client.py             ← MediaWiki search + extract
   │     ├── openfda_client.py          ← FDA drug labels (Rx + OTC fields)
-  │     ├── vision_client.py           ← llava:7b image analysis
   │     ├── session_store.py           ← Supabase-backed session/message persistence
   │     ├── config.py                  ← all constants + load_dotenv
   │     ├── retry.py                   ← shared HTTP retry with Retry-After
   │     └── logging_setup.py           ← request-ID context var
-  ├── storage_client.py                ← Supabase Storage (image uploads)
   ├── routers/session_routes.py        ← session CRUD API (auth-protected)
   ├── auth.py                          ← JWT verification (python-jose + ES256/JWKS)
   └── supabase_client.py               ← Supabase client singleton
 ```
 
-`rxnav_client.py` was deleted — heuristic drug extraction proved sufficient.
+`rxnav_client.py`, `vision_client.py`, `storage_client.py` were deleted.
 
 ### 2.2 Endpoints
 
@@ -74,25 +70,6 @@ Streaming SSE endpoint. Accepts JSON:
 **Validation:** If `query` is empty/missing → yield single `error` event with code `EMPTY_QUERY`.
 
 **Error guard:** All pipeline exceptions are caught and surfaced as `event: error` with code `INTERNAL_ERROR`. The SSE stream never hangs.
-
-#### `POST /api/chat/image`
-Streaming SSE endpoint with image upload. Accepts `multipart/form-data`:
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `query` | string | No | Text query (can be empty if image provided) |
-| `session_id` | string | No | Session identifier |
-| `image` | file | Yes | Image file (JPEG, PNG, WebP; max 10MB) |
-
-**Auth:** Requires `Authorization: Bearer <supabase_jwt>` header.
-
-**Flow:**
-1. Validate file type and size
-2. Upload image to Supabase Storage → get signed URL (1-day expiry)
-3. Pass image bytes to pipeline for two-step analysis
-4. Return SSE stream with image URL in `done` event
-
-**Error codes:** `INVALID_IMAGE`, `IMAGE_TOO_LARGE`, `UPLOAD_FAILED`
 
 #### Session Routes (all auth-protected)
 
@@ -134,16 +111,9 @@ event: error                 ← terminal, on failure
 data: {"message":"...", "code":"TIMEOUT"|"CONNECTION_REFUSED"|"INTERNAL_ERROR"|"EMPTY_QUERY"}
 ```
 
-### 2.4 Pipeline (8 Phases)
+### 2.4 Pipeline (7 Phases)
 
 ```
-Phase 0 — Image analysis (if image provided)
-  vision_client.analyze_image(image_bytes):
-    Model: llava:7b (fast vision model, ~5-10s)
-    Input: base64-encoded image
-    Output: detailed text description of image contents
-    Timeout: 60s
-  ↓
 Phase 1 — Wikipedia search
   search_wikipedia(raw query, max_results=3) → [{pageid, title, snippet, url}]
   get_wiki_extracts([pageids]) → {pageid: plain_text}
@@ -176,13 +146,12 @@ Phase 4 — Citation metadata
   Each: {index, url, title, source: "wikipedia"|"fda"}
   ↓
 Phase 5 — Build prompt
-  _build_prompt(query, wiki_context, fda_context, conversation_history, image_description):
+  _build_prompt(query, wiki_context, fda_context, conversation_history):
     1. ## PREVIOUS CONVERSATION (if any)
-    2. ## IMAGE ANALYSIS (if image provided)
-    3. ## WIKIPEDIA MEDICAL INFORMATION
-    4. ## FDA DRUG LABEL INFORMATION
-    5. ## USER'S QUESTION
-    6. Minimal guidance: "Answer helpfully...cite sources...include disclaimer"
+    2. ## WIKIPEDIA MEDICAL INFORMATION
+    3. ## FDA DRUG LABEL INFORMATION
+    4. ## USER'S QUESTION
+    5. Minimal guidance: "Answer helpfully...cite sources...include disclaimer"
   No hardcoded behavior rules, no system prompt, no role constraints.
   ↓
 Phase 6 — Stream
@@ -193,10 +162,10 @@ Phase 6 — Stream
   6e: Citation post-processing:
       - _normalize_citation_markers(): [N], (N), [[CITATION N]] → [[CITATION:N]]
       - _extract_citations(): find all used indices
-      - Yield done event with filtered citations (+ image_url if provided)
+      - Yield done event with filtered citations
   ↓
 Phase 7 — Persist conversation
-  session_store.save(session_id, "user", query, image_url=image_url)
+  session_store.save(session_id, "user", query)
   session_store.save(session_id, "assistant", full_text)
 ```
 
@@ -223,15 +192,6 @@ POST http://localhost:11434/api/generate
 Body: {"model": "medgemma1.5:4b-it-q8_0", "prompt": "<assembled prompt>", "stream": true}
 Timeout: 120s total, 10s connect
 ```
-
-**Image Analysis (llava:7b):**
-```
-POST http://localhost:11434/api/generate
-Body: {"model": "llava:7b", "prompt": "<description prompt>", "images": ["<base64>"], "stream": false}
-Timeout: 60s total, 10s connect
-```
-
-Two-step approach: llava:7b (fast vision) describes image → medgemma1.5 uses description for medical interpretation.
 
 Error handling:
 | Exception | SSE Event |
@@ -269,7 +229,6 @@ layout.tsx
         │     │     │     └── MessageBubble.tsx
         │     │     │           ├── InlineCitation.tsx
         │     │     │           └── CitationPill.tsx
-        │     │     ├── ImagePreview.tsx  ← thumbnail preview with remove button
         │     │     ├── StatusBubble.tsx
         │     │     └── StreamingDots.tsx
         │     ├── AutoExpandTextarea.tsx
@@ -280,7 +239,7 @@ layout.tsx
 
 ### 3.2 State Management
 
-Single `useReducer` with **13 action types**:
+Single `useReducer` with **11 action types**:
 
 | Action | Purpose |
 |--------|---------|
@@ -296,7 +255,6 @@ Single `useReducer` with **13 action types**:
 | `CLEAR_CHAT` | Reset to initial state, optionally with new sessionId |
 | `LOAD_SESSION` | Replace messages from saved session |
 | `SET_SESSION_ID` | Update sessionId only |
-| `UPDATE_MESSAGE_IMAGE` | Update image URL on a specific message (after upload) |
 
 **Citation persistence bug (fixed):** When backend sends `citations: []` in the `done` event (model used non-standard markers), the reducer preserves accumulated citations from `ADD_CITATION` events rather than overwriting them.
 
@@ -427,8 +385,6 @@ All settings in `backend/config.py`:
 | `OLLAMA_URL` | `http://localhost:11434/api/generate` | |
 | `OLLAMA_MODEL` | `medgemma1.5:4b-it-q8_0` | |
 | `OLLAMA_TIMEOUT` | 120s total, 10s connect | |
-| `VISION_MODEL` | `llava:7b` | Fast image analysis |
-| `VISION_TIMEOUT` | 60s total, 10s connect | |
 | `OPENFDA_ENDPOINT` | `https://api.fda.gov/drug/label.json` | |
 | `OPENFDA_TIMEOUT` | 10s total, 5s connect | |
 | `OPENFDA_MAX_RETRIES` | 3 | |
@@ -440,10 +396,6 @@ All settings in `backend/config.py`:
 | `MAX_HISTORY_TURNS` | 6 | Conversation window |
 | `SESSION_TTL_SECONDS` | 1800 | 30 minutes |
 | `MAX_PROMPT_WORDS` | 4500 | ~6000 tokens; warn if exceeded |
-| `MAX_IMAGE_SIZE` | 10MB | Image upload limit |
-| `SUPPORTED_IMAGE_TYPES` | JPEG, PNG, WebP | Allowed image formats |
-| `STORAGE_BUCKET` | `chat-images` | Supabase Storage bucket |
-| `STORAGE_SIGNED_URL_EXPIRY` | 86400 | 1 day in seconds |
 
 ---
 
@@ -500,6 +452,8 @@ All settings in `backend/config.py`:
 | `semantic_scholar_client.py` | earlier | Severe 429 rate limiting |
 | `rag_pipeline.py` | earlier | Full redesign → `symptom_pipeline.py` |
 | `rxnav_client.py` | 2026-06-18 | Unwired, then deleted — heuristic extraction sufficient |
+| `vision_client.py` | 2026-06-27 | Image feature removed |
+| `storage_client.py` | 2026-06-27 | Image feature removed |
 
 ---
 
@@ -510,8 +464,5 @@ All settings in `backend/config.py`:
 | **No unit tests** | Regression risk on edits | Manual curl testing |
 | **No evaluation baseline** | Cannot measure answer quality | Planned, not yet done |
 | **No frontend tests** | UI regression risk | Manual browser testing |
-| **Two-model dependency** | llava:7b + medgemma1.5 both required | Vision failure returns fallback description; text model still works |
 | **Heuristic drug extraction** | May miss unusual drug names | 3-pass extraction (capitalized + all-caps + lowercase) catches most |
 | **No rate limiting** | OpenFDA has rate limits | Retry logic handles 429; no explicit client-side throttling |
-| **Image size limit** | 10MB max upload | Error message if exceeded |
-| **Signed URL expiry** | Images expire after 24 hours | Acceptable for chat context |

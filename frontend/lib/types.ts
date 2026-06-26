@@ -18,7 +18,6 @@ export interface Message {
   status: MessageStatus;
   errorMessage?: string;
   warningMessage?: string;
-  imageUrl?: string;
 }
 
 export interface Session {
@@ -30,7 +29,7 @@ export interface Session {
 }
 
 export type ChatAction =
-  | { type: 'ADD_USER_MESSAGE'; text: string; imageUrl?: string }
+  | { type: 'ADD_USER_MESSAGE'; text: string }
   | { type: 'CREATE_ASSISTANT_MESSAGE' }
   | { type: 'APPEND_TOKEN'; text: string }
   | { type: 'ADD_CITATION'; citation: Citation }
@@ -41,8 +40,7 @@ export type ChatAction =
   | { type: 'HIDE_STATUS' }
   | { type: 'CLEAR_CHAT'; sessionId?: string }
   | { type: 'LOAD_SESSION'; messages: Message[]; sessionId?: string }
-  | { type: 'SET_SESSION_ID'; sessionId: string }
-  | { type: 'UPDATE_MESSAGE_IMAGE'; messageId: string; imageUrl: string };
+  | { type: 'SET_SESSION_ID'; sessionId: string };
 
 export interface ChatState {
   messages: Message[];

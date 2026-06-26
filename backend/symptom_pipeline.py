@@ -18,7 +18,6 @@ from backend.config import ErrorCode, MAX_OUTPUT_TOKENS, MAX_PROMPT_WORDS, OLLAM
 from backend.logging_setup import set_request_id
 from backend.openfda_client import search_openfda
 from backend.session_store import session_store
-from backend.vision_client import analyze_image
 from backend.wiki_client import get_wiki_extracts, search_wikipedia
 
 logger = logging.getLogger(__name__)
@@ -264,7 +263,6 @@ def _build_prompt(
     wiki_context: str = "",
     fda_context: str = "",
     conversation_history: str = "",
-    image_description: str = "",
 ) -> str:
     """Build the full prompt for the LLM — minimal, no hardcoded behavior rules."""
     parts: list[str] = []
@@ -272,16 +270,6 @@ def _build_prompt(
     # Conversation history
     if conversation_history:
         parts.append("## PREVIOUS CONVERSATION\n" + conversation_history + "\n")
-
-    # Image description from llava:7b analysis
-    if image_description:
-        parts.append(
-            "## IMAGE ANALYSIS\n"
-            "The user uploaded an image. Here is a detailed description of what was visible:\n"
-            f"{image_description}\n\n"
-            "Based on this image description, identify any medical content, drugs, dosages, "
-            "instructions, or health-related information. Provide relevant medical context.\n"
-        )
 
     # Context
     if wiki_context:
@@ -329,29 +317,18 @@ def _build_prompt(
 async def run(
     query: str,
     session_id: str,
-    image_bytes: bytes | None = None,
-    image_url: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """Answer a medical question, yielding SSE events.
 
     Always searches Wikipedia and OpenFDA regardless of query content.
     No keyword classification — the model handles everything.
-    If image_bytes is provided, llava:7b analyzes the image first,
-    then medgemma uses the description for medical interpretation.
     """
     set_request_id(uuid.uuid4().hex[:8])
 
     # Sanitize session_id — only allow alphanumeric, hyphens, underscores
     session_id = re.sub(r'[^a-zA-Z0-9_-]', '', session_id)[:128]
 
-    logger.info("Request: query=%r session=%s has_image=%s", query, session_id, bool(image_bytes))
-
-    # ── Phase 0: Image analysis (if image provided) ───────────────────
-    image_description = ""
-    if image_bytes:
-        yield _sse_event("info", {"message": "Analyzing image..."})
-        image_description = await analyze_image(image_bytes)
-        logger.info("Image description: %s...", image_description[:100])
+    logger.info("Request: query=%r session=%s", query, session_id)
 
     # ── Phase 1: Wikipedia (full query) ────────────────────────────────
     wiki_articles = await search_wikipedia(query, max_results=3)
@@ -444,7 +421,6 @@ async def run(
         wiki_context=wiki_context,
         fda_context=fda_context,
         conversation_history=history,
-        image_description=image_description,
     )
 
     # ── Phase 6: Stream ─────────────────────────────────────────────────
@@ -483,14 +459,11 @@ async def run(
         "full_text": full_text,
         "citations": [c for c in citations if c["index"] in used_indices],
     }
-    if image_url:
-        done_payload["image_url"] = image_url
     yield _sse_event("done", done_payload)
 
     # ── Phase 7: Persist conversation ───────────────────────────────────
     if session_id:
-        user_message = query if query else "[Image uploaded]"
-        await session_store.save(session_id, "user", user_message, image_url=image_url)
+        await session_store.save(session_id, "user", query)
         await session_store.save(session_id, "assistant", full_text)
 
     logger.info(

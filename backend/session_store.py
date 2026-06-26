@@ -25,7 +25,7 @@ class SessionStore:
         db = get_supabase()
         result = (
             db.table("messages")
-            .select("role,content,image_url")
+            .select("role,content")
             .eq("session_id", session_id)
             .order("created_at", desc=False)
             .limit(self._max_turns * 2)
@@ -39,8 +39,6 @@ class SessionStore:
         for msg in result.data:
             role_label = "User" if msg["role"] == "user" else "Assistant"
             content = msg["content"]
-            if msg.get("image_url"):
-                content = f"[User uploaded an image] {content}"
             lines.append(f"{role_label}: {content}")
         return "\n".join(lines)
 
@@ -49,7 +47,6 @@ class SessionStore:
         session_id: str,
         role: str,
         content: str,
-        image_url: str | None = None,
     ) -> None:
         """Append a message to *session_id*. Creates session if it doesn't exist."""
         db = get_supabase()
@@ -73,8 +70,6 @@ class SessionStore:
                 "role": role,
                 "content": content,
             }
-            if image_url:
-                insert_data["image_url"] = image_url
             db.table("messages").insert(insert_data).execute()
         except Exception as exc:
             logger.warning("Could not save message to session %s: %s", session_id, exc)

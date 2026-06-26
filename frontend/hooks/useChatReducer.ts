@@ -29,7 +29,6 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         role: 'user',
         content: action.text,
         status: 'done',
-        imageUrl: action.imageUrl,
       });
       return {
         ...state,
@@ -173,13 +172,6 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       };
     }
 
-    case 'UPDATE_MESSAGE_IMAGE': {
-      const messages = state.messages.map((msg) =>
-        msg.id === action.messageId ? { ...msg, imageUrl: action.imageUrl } : msg
-      );
-      return { ...state, messages };
-    }
-
     default:
       return state;
   }
@@ -193,8 +185,8 @@ export function useChatReducer(initialSessionId?: string) {
   );
 
   const addUserMessage = useCallback(
-    (text: string, imageUrl?: string) =>
-      dispatch({ type: 'ADD_USER_MESSAGE', text, imageUrl }),
+    (text: string) =>
+      dispatch({ type: 'ADD_USER_MESSAGE', text }),
     []
   );
 
@@ -255,12 +247,6 @@ export function useChatReducer(initialSessionId?: string) {
     []
   );
 
-  const updateMessageImage = useCallback(
-    (messageId: string, imageUrl: string) =>
-      dispatch({ type: 'UPDATE_MESSAGE_IMAGE', messageId, imageUrl }),
-    []
-  );
-
   return {
     state,
     addUserMessage,
@@ -275,6 +261,5 @@ export function useChatReducer(initialSessionId?: string) {
     clearChat,
     loadSession,
     setSessionId,
-    updateMessageImage,
   };
 }

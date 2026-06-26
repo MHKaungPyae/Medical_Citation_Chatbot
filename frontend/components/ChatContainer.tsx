@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import MessageList from './MessageList';
 import AutoExpandTextarea from './AutoExpandTextarea';
 import SendButton from './SendButton';
-import ImagePreview from './ImagePreview';
-import { IconChevronDown, IconImage } from './Icons';
+import { IconChevronDown } from './Icons';
 import { useScrollManager } from '@/hooks/useScrollManager';
 import type { Message } from '@/lib/types';
 
@@ -18,10 +17,6 @@ interface ChatContainerProps {
   onSend: () => void;
   onStop: () => void;
   onExampleClick: (question: string) => void;
-  selectedImage: File | null;
-  imagePreviewUrl: string | null;
-  onFileSelect: (file: File) => void;
-  onRemoveImage: () => void;
 }
 
 function ChatContainer({
@@ -33,17 +28,11 @@ function ChatContainer({
   onSend,
   onStop,
   onExampleClick,
-  selectedImage,
-  imagePreviewUrl,
-  onFileSelect,
-  onRemoveImage,
 }: ChatContainerProps) {
   const {
     scrollRef, userScrolledUp, setUserScrolledUp,
     scrollToBottom, handleScroll,
   } = useScrollManager();
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!userScrolledUp) {
@@ -52,17 +41,6 @@ function ChatContainer({
   }, [messages, statusMessage, scrollToBottom, userScrolledUp]);
 
   const isEmpty = messages.length === 0;
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      onFileSelect(file);
-      // Reset input so same file can be re-selected
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -91,26 +69,6 @@ function ChatContainer({
       </div>
 
       <div className="sticky bottom-0 px-4 py-3" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.3), transparent)', backdropFilter: 'blur(12px)' }}>
-        {/* Image preview bar */}
-        {imagePreviewUrl && (
-          <div className="mx-auto mb-2 flex max-w-3xl items-center gap-2 rounded-xl px-4 py-2"
-            style={{
-              background: 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(124,58,237,0.08))',
-              border: '1px solid rgba(255,255,255,0.1)',
-              backdropFilter: 'blur(12px)',
-            }}
-          >
-            <ImagePreview
-              src={imagePreviewUrl}
-              alt={selectedImage?.name || 'Preview'}
-              onRemove={onRemoveImage}
-            />
-            <span className="truncate text-xs text-white/60">
-              {selectedImage?.name}
-            </span>
-          </div>
-        )}
-
         <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl px-4 py-1"
           style={{
             background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(124,58,237,0.1), rgba(99,102,241,0.08))',
@@ -119,28 +77,6 @@ function ChatContainer({
             backdropFilter: 'blur(16px)',
           }}
         >
-          {/* Hidden file input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleFileChange}
-            className="hidden"
-            aria-label="Upload image"
-          />
-
-          {/* Attachment button */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isStreaming}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl
-                       text-white/50 transition-colors hover:text-white/80
-                       disabled:opacity-30 disabled:cursor-not-allowed"
-            aria-label="Attach image"
-          >
-            <IconImage size={20} />
-          </button>
-
           <AutoExpandTextarea
             value={inputValue}
             onChange={onInputChange}
@@ -148,14 +84,14 @@ function ChatContainer({
             disabled={isStreaming}
           />
           <SendButton
-            disabled={!inputValue.trim() && !selectedImage}
+            disabled={!inputValue.trim()}
             isStreaming={isStreaming}
             onSend={onSend}
             onStop={onStop}
           />
         </div>
         <p className="mt-1.5 text-center text-xs text-white/50">
-          Press Enter to send · Shift+Enter for new line · 📷 Attach image
+          Press Enter to send · Shift+Enter for new line
         </p>
       </div>
     </div>

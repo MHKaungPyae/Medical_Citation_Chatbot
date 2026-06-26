@@ -10,7 +10,6 @@ cd backend
 source .venv/bin/activate
 pip install -r requirements.txt
 ollama pull medgemma1.5:4b-it-q8_0
-ollama pull llava:7b
 cd .. && find backend -type d -name __pycache__ -exec rm -rf {} + && PYTHONPATH=. uvicorn backend.main:app --reload --port 8000
 
 # Frontend
@@ -35,8 +34,6 @@ User → Next.js (port 3000) → FastAPI (port 8000) → Wikipedia / OpenFDA / O
 ```
 User query (any medical question — accepted unconditionally)
   ↓
-Phase 0: If image provided → llava:7b analyzes image (fast, ~5-10s) → generates description
-  ↓
 Phase 1: Wikipedia — search raw query, get extracts
   ↓ (fallback: search extracted drug names if no articles found)
 Phase 2: Heuristic drug name extraction (capitalized + 5-15 char lowercase, minus stop words)
@@ -45,7 +42,7 @@ Phase 3: OpenFDA — concurrent drug label searches for extracted names
   ↓
 Phase 4: Citation metadata — build citation list from Wiki + FDA results
   ↓
-Phase 5: Build minimal prompt (context + image description + "answer helpfully, cite [[CITATION:N]], include disclaimer")
+Phase 5: Build minimal prompt (context + "answer helpfully, cite [[CITATION:N]], include disclaimer")
   ↓
 Phase 6: Stream — citation metadata → info/warning → medgemma1.5:4b-it-q8_0 token stream
   ↓
@@ -61,8 +58,6 @@ Citation post-processing: normalise markers → filter used citations → done e
 | `backend/symptom_pipeline.py` | Self-contained pipeline: wiki → drug extract → OpenFDA → prompt → LLM → citations (all formatting inline, no prompts.py) |
 | `backend/wiki_client.py` | MediaWiki API: raw query search + plain-text extracts (no suffix bias) |
 | `backend/openfda_client.py` | OpenFDA drug/label: Rx + OTC field extraction, DailyMed links |
-| `backend/vision_client.py` | llava:7b image analysis — fast vision model for describing medical images |
-| `backend/storage_client.py` | Supabase Storage — image upload with signed URLs |
 | `backend/config.py` | Centralised config: all endpoints, timeouts, model name, prompt limits. Loads `.env` via `load_dotenv` |
 | `backend/retry.py` | Shared HTTP retry with Retry-After parsing, exponential backoff |
 | `backend/session_store.py` | Supabase-backed session/message persistence (6-turn history window) |
@@ -70,7 +65,7 @@ Citation post-processing: normalise markers → filter used citations → done e
 | `backend/routers/session_routes.py` | Session CRUD API (GET/POST/PATCH/DELETE), all auth-protected with ownership checks |
 | `backend/supabase_client.py` | Supabase client singleton (uses `SUPABASE_URL` + `SUPABASE_KEY` from env) |
 | `backend/logging_setup.py` | Structured logging with request-ID via context var |
-| `backend/main.py` | FastAPI server, POST /api/chat + /api/chat/image SSE dispatch, session router, shutdown hooks |
+| `backend/main.py` | FastAPI server, POST /api/chat SSE dispatch, session router, shutdown hooks |
 | `frontend/hooks/useChatController.ts` | Single hook: reducer + stream + session store + debounced persistence |
 | `frontend/hooks/useChatStream.ts` | SSE consumer (authenticatedFetch + ReadableStream + CRLF-safe parsing) |
 | `frontend/hooks/useChatReducer.ts` | 13-action useReducer for chat state |
@@ -87,9 +82,8 @@ Citation post-processing: normalise markers → filter used citations → done e
 | `frontend/components/MessageBubble.tsx` | Renders text with [[CITATION:N]] → inline [Wikipedia ↗] / [FDA ↗] tags |
 | `frontend/components/InlineCitation.tsx` | Clickable source-labeled inline citation badges |
 | `frontend/components/CitationPill.tsx` | Rich citation pills below message (title, source, external link) |
-| `frontend/components/ImagePreview.tsx` | Image thumbnail preview with remove button |
 | `frontend/components/ErrorBoundary.tsx` | React error boundary — catches render crashes, shows recovery UI |
-| `frontend/components/Icons.tsx` | Shared icon components (Menu, Close, Trash, ChevronDown, Send, Stop, Spinner, Image) |
+| `frontend/components/Icons.tsx` | Shared icon components (Menu, Close, Trash, ChevronDown, Send, Stop, Spinner) |
 | `frontend/components/ui/liquid-glass-button.tsx` | Glassmorphism button (Radix Slot + CVA + tailwind-merge) |
 | `frontend/components/ui/shader-background.tsx` | WebGL animated shader canvas (full-page background) |
 
@@ -106,7 +100,7 @@ Citation post-processing: normalise markers → filter used citations → done e
 - **Environment variables:** Backend uses `load_dotenv()` in `config.py` to load `backend/.env`. Frontend uses `.env.local` for `NEXT_PUBLIC_SUPABASE_*` vars. Never commit `.env` files.
 - **Pycache:** Always run `find backend -type d -name __pycache__ -exec rm -rf {} +` after code changes before restarting uvicorn.
 - **Python deps:** Always activate the venv (`source backend/.venv/bin/activate`) before running anything.
-- **Deleted files:** `prompts.py`, `query_classifier.py`, `classifier_data.py`, `pubmed_client.py`, `semantic_scholar_client.py`, `rag_pipeline.py`, `rxnav_client.py` — do not recreate any of these.
+- **Deleted files:** `prompts.py`, `query_classifier.py`, `classifier_data.py`, `pubmed_client.py`, `semantic_scholar_client.py`, `rag_pipeline.py`, `rxnav_client.py`, `vision_client.py`, `storage_client.py` — do not recreate any of these.
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
