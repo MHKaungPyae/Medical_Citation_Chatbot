@@ -9,82 +9,62 @@ import { truncateTitle } from '@/lib/utils';
 // ── API helpers ─────────────────────────────────────────────────────────
 
 async function fetchSessions(): Promise<Session[]> {
-  try {
-    const res = await authenticatedFetch(`${API_URL}/api/sessions`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.map((s: Record<string, string>) => ({
-      id: s.id,
-      title: s.title,
-      createdAt: new Date(s.created_at).getTime(),
-      updatedAt: new Date(s.updated_at).getTime(),
-      messages: [],
-    }));
-  } catch {
-    return [];
-  }
+  const res = await authenticatedFetch(`${API_URL}/api/sessions`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.map((s: Record<string, string>) => ({
+    id: s.id,
+    title: s.title,
+    createdAt: new Date(s.created_at).getTime(),
+    updatedAt: new Date(s.updated_at).getTime(),
+    messages: [],
+  }));
 }
 
 async function fetchMessages(sessionId: string): Promise<Message[]> {
-  try {
-    const res = await authenticatedFetch(`${API_URL}/api/sessions/${sessionId}/messages`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.map((m: Record<string, unknown>) => ({
-      id: m.id as string,
-      role: m.role as 'user' | 'assistant',
-      content: m.content as string,
-      citations: m.citations_json ? JSON.parse(m.citations_json as string) : [],
-      status: 'done' as const,
-    }));
-  } catch {
-    return [];
-  }
+  const res = await authenticatedFetch(`${API_URL}/api/sessions/${sessionId}/messages`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.map((m: Record<string, unknown>) => ({
+    id: m.id as string,
+    role: m.role as 'user' | 'assistant',
+    content: m.content as string,
+    citations: m.citations_json ? JSON.parse(m.citations_json as string) : [],
+    status: 'done' as const,
+  }));
 }
 
 async function createSessionApi(title: string): Promise<Session | null> {
-  try {
-    const res = await authenticatedFetch(`${API_URL}/api/sessions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title }),
-    });
-    if (!res.ok) return null;
-    const s = await res.json();
-    return {
-      id: s.id,
-      title: s.title,
-      createdAt: new Date(s.created_at).getTime(),
-      updatedAt: new Date(s.updated_at).getTime(),
-      messages: [],
-    };
-  } catch {
-    return null;
-  }
+  const res = await authenticatedFetch(`${API_URL}/api/sessions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) return null;
+  const s = await res.json();
+  return {
+    id: s.id,
+    title: s.title,
+    createdAt: new Date(s.created_at).getTime(),
+    updatedAt: new Date(s.updated_at).getTime(),
+    messages: [],
+  };
 }
 
 async function deleteSessionApi(sessionId: string): Promise<boolean> {
-  try {
-    const res = await authenticatedFetch(`${API_URL}/api/sessions/${sessionId}`, {
-      method: 'DELETE',
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
+  const res = await authenticatedFetch(`${API_URL}/api/sessions/${sessionId}`, {
+    method: 'DELETE',
+  });
+  return res.ok;
 }
 
 async function updateSessionTitleApi(sessionId: string, title: string): Promise<boolean> {
-  try {
-    const res = await authenticatedFetch(`${API_URL}/api/sessions/${sessionId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title }),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
+  const res = await authenticatedFetch(`${API_URL}/api/sessions/${sessionId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  });
+  return res.ok;
 }
 
 // ── hook ────────────────────────────────────────────────────────────────

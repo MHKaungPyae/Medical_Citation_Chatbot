@@ -1,6 +1,6 @@
 # Project Overview — Medical Chatbot (Generative RAG)
 
-**Goal:** Generative medical chatbot using FastAPI + Next.js + Ollama (medgemma1.5:4b-it-q8_0) with live Wikipedia + OpenFDA data, Supabase auth + persistence.
+**Goal:** Generative medical chatbot using FastAPI + Next.js + Ollama (qwen2.5:7b) with live Wikipedia + OpenFDA data, Supabase auth + persistence.
 
 **Status:** Phases 0–6 complete. Remaining: unit tests (Phase 7), evaluation baseline (Phase 8).
 

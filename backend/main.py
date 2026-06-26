@@ -2,18 +2,18 @@
 
 import json
 import logging
-from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from backend.auth import get_current_user
 from backend.config import ErrorCode
 from backend.logging_setup import setup_logging
 from backend.openfda_client import close_client as close_openfda_client
 from backend.routers.session_routes import router as session_router
-from backend.symptom_pipeline import run as run_symptom_pipeline
+from backend.symptom_pipeline import close_ollama_client, run as run_symptom_pipeline
 from backend.wiki_client import close_client as close_wiki_client
 
 logger = logging.getLogger(__name__)
@@ -42,6 +42,7 @@ class ChatRequest(BaseModel):
 async def shutdown_event():
     await close_wiki_client()
     await close_openfda_client()
+    await close_ollama_client()
 
 
 @app.get("/api/health")
@@ -71,5 +72,3 @@ async def chat(body: ChatRequest):
         _safe_stream(),
         media_type="text/event-stream",
     )
-
-

@@ -1,19 +1,16 @@
 # 🩺 Medical Chatbot — Generative RAG
 
-A generative RAG chatbot that retrieves live data from **Wikipedia** and **OpenFDA**, feeds it to a local **medgemma1.5:4b-it-q8_0** model via **Ollama**, and streams cited responses to a React frontend. **Supabase** provides authentication and persistent session storage. No hardcoded prompts, no keyword classifiers — the LLM handles everything generatively.
-
-**Image Support:** Users can upload medical images (prescriptions, CT scans, ultrasounds). Images are analyzed by **llava:7b** (fast vision model) to generate a description, which is then used by **medgemma1.5** for medical interpretation.
+A generative RAG chatbot that retrieves live data from **Wikipedia** and **OpenFDA**, feeds it to a local **qwen2.5:7b** model via **Ollama**, and streams cited responses to a React frontend. **Supabase** provides authentication and persistent session storage. No hardcoded prompts, no keyword classifiers — the LLM handles everything generatively.
 
 ## How It Works
 
 1. User asks any medical question (e.g. *"explain about paracetamol and I took glucosamine and now I have a rash"*)
-2. If an image is uploaded, **llava:7b** analyzes it and generates a detailed description (~5-10 seconds)
-3. Backend searches Wikipedia for the full query, extracts plain-text intros
-4. Drug names are extracted heuristically from the query and Wikipedia text (no keyword lists)
-5. OpenFDA is queried concurrently for each drug — both Rx and OTC label fields are extracted
-6. A minimal prompt is built: context + image description + "answer the question, cite sources, include disclaimer" — no hardcoded behavior rules
-7. medgemma1.5:4b-it-q8_0 streams a response token-by-token via **Server-Sent Events (SSE)**
-8. Frontend renders streaming text with `[[CITATION:N]]` markers as clickable inline `[Wikipedia ↗]` / `[FDA ↗]` tags
+2. Backend searches Wikipedia for the full query, extracts plain-text intros
+3. Drug names are extracted heuristically from the query and Wikipedia text (no keyword lists)
+4. OpenFDA is queried concurrently for each drug — both Rx and OTC label fields are extracted
+5. A minimal prompt is built: context + "answer the question, cite sources, include disclaimer" — no hardcoded behavior rules
+6. qwen2.5:7b streams a response token-by-token via **Server-Sent Events (SSE)**
+7. Frontend renders streaming text with `[[CITATION:N]]` markers as clickable inline `[Wikipedia ↗]` / `[FDA ↗]` tags
 
 ## Tech Stack
 
@@ -22,13 +19,11 @@ A generative RAG chatbot that retrieves live data from **Wikipedia** and **OpenF
 | **Frontend** | Next.js 16 (App Router) + TypeScript + Tailwind CSS |
 | **Backend** | FastAPI + Python 3.12 |
 | **Streaming** | Server-Sent Events (SSE) over HTTP |
-| **Text LLM** | medgemma1.5:4b-it-q8_0 via Ollama (local, offline) |
-| **Vision LLM** | llava:7b via Ollama (fast image analysis) |
+| **LLM** | qwen2.5:7b via Ollama (local, offline) |
 | **Data Sources** | Wikipedia (MediaWiki API), OpenFDA Drug Label |
 | **HTTP Client** | httpx (async) |
 | **Auth** | Supabase Auth (JWT) + python-jose verification |
 | **Database** | Supabase PostgreSQL (sessions, messages) |
-| **Storage** | Supabase Storage (image uploads) |
 
 ## Project Structure
 
@@ -167,9 +162,8 @@ source .venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Pull the models
-ollama pull medgemma1.5:4b-it-q8_0
-ollama pull llava:7b
+# Pull the model
+ollama pull qwen2.5:7b
 ```
 
 ### 4. Setup Frontend
@@ -202,12 +196,12 @@ Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to 
 - 🤖 **Fully generative** — No hardcoded prompts, no keyword lists, no query classifier
 - 📎 **Clickable citations** — `[[CITATION:N]]` rendered as `[Wikipedia ↗]` (teal) / `[FDA ↗]` (amber) inline tags
 - ⚡ **Token-by-token streaming** — Responses appear as they're generated
-- 🧠 **Local model** — medgemma1.5:4b-it-q8_0 runs entirely on your machine via Ollama
+- 🧠 **Local model** — qwen2.5:7b runs entirely on your machine via Ollama
 - 🔐 **User authentication** — Supabase Auth with JWT tokens, login/register pages
 - 💾 **Persistent sessions** — Chat history stored in Supabase PostgreSQL, survives restarts
 - 🛑 **Cancel during streaming** — Stop generation mid-response, keep partial text
 - 📱 **Responsive** — Collapsible sidebar, mobile-friendly layout
-- 🎨 **Glassmorphism UI** — Frosted glass panels, animated WebGL shader background, indigo accents
+- 🎨 **Warm Wellness design** — Clean, calming color palette
 - ♿ **Keyboard accessible** — Sidebar session items are `<button>` elements with aria labels
 
 ## SSE Wire Format

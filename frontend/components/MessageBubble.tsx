@@ -16,12 +16,8 @@ function MessageBubble({ message }: MessageBubbleProps) {
   if (isUser) {
     return (
       <div className="mb-3 flex animate-fade-in justify-end">
-        <div className="max-w-[80%] space-y-2">
-          {message.content && (
-            <div className="rounded-2xl rounded-br-md bg-teal-primary px-4 py-3 text-sm leading-relaxed text-white shadow-sm">
-              {message.content}
-            </div>
-          )}
+        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-teal-primary px-4 py-3 text-sm leading-relaxed text-white shadow-sm">
+          {message.content}
         </div>
       </div>
     );

@@ -185,8 +185,7 @@ export function useChatReducer(initialSessionId?: string) {
   );
 
   const addUserMessage = useCallback(
-    (text: string) =>
-      dispatch({ type: 'ADD_USER_MESSAGE', text }),
+    (text: string) => dispatch({ type: 'ADD_USER_MESSAGE', text }),
     []
   );
 

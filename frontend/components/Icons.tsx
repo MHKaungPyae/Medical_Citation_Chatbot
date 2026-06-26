@@ -78,4 +78,3 @@ export function IconSpinner({ size = 16, className }: IconProps) {
     </svg>
   );
 }
-

@@ -8,8 +8,7 @@ This skill enforces the architectural constraints of the Medical Chatbot. Loaded
 ### Backend
 - **Framework:** FastAPI (Python 3.12+), NOT Flask, NOT Django.
 - **HTTP Client:** `httpx` with async support for all outbound API calls.
-- **LLM Runtime:** Ollama, running locally at `http://localhost:11434`.
-  - **Text model:** `medgemma1.5:4b-it-q8_0` — medical knowledge and response generation.
+- **LLM Runtime:** Ollama, running locally at `http://localhost:11434`, model `qwen2.5:7b`.
 - **Streaming:** Server-Sent Events (SSE) over HTTP, NOT WebSockets.
 
 ### Frontend
@@ -38,7 +37,7 @@ Citation metadata: build citation list from Wiki articles + FDA results
   ↓
 Minimal prompt: context + "answer helpfully, cite [[CITATION:N]], include disclaimer"
   ↓
-Ollama medgemma1.5:4b-it-q8_0 → SSE stream (token|citation|done|error|warning|info)
+Ollama qwen2.5:7b → SSE stream (token|citation|done|error|warning|info)
 ```
 
 ## Rules
@@ -73,22 +72,21 @@ Ollama medgemma1.5:4b-it-q8_0 → SSE stream (token|citation|done|error|warning|
 
 ### Code Organization:
 - `backend/` — 12 Python modules (11 active + 1 init):
-  - `main.py` — FastAPI server (SSE streaming routes, session router, shutdown hooks)
+  - `main.py` — FastAPI server (SSE streaming route, session router, shutdown hooks)
   - `symptom_pipeline.py` — self-contained pipeline (prompt building, drug extraction, context formatting, streaming — all inline)
   - `wiki_client.py` — Wikipedia MediaWiki API (raw query search + extracts, no suffix bias)
   - `openfda_client.py` — OpenFDA drug label API (OTC + Rx field extraction)
   - `config.py` — centralised configuration (endpoints, timeouts, model name, prompt limits, `load_dotenv`)
   - `retry.py` — shared HTTP retry helper with Retry-After parsing
   - `session_store.py` — Supabase-backed session/message persistence
-  - `auth.py` — JWT verification middleware (`python-jose` + ES256/JWKS), `get_current_user` FastAPI dependency
+  - `auth.py` — JWT verification middleware (`python-jose`), `get_current_user` FastAPI dependency
   - `routers/session_routes.py` — session CRUD API (GET/POST/PATCH/DELETE), auth-protected with ownership checks
   - `supabase_client.py` — Supabase client singleton (uses env vars)
   - `logging_setup.py` — structured logging with request-ID injection via contextvar
   - `__init__.py`
 - `frontend/` — Next.js 16 App Router + TypeScript + Tailwind CSS:
-  - `hooks/` — `useChatController`, `useChatReducer` (11 actions), `useChatStream`, `useSessionStore`, `useScrollManager`, `useAuth`
+  - `hooks/` — `useChatController`, `useChatReducer` (12 actions), `useChatStream`, `useSessionStore`, `useScrollManager`, `useAuth`
   - `components/` — `ChatContainer` (React.memo), `MessageList`, `MessageBubble`, `InlineCitation`, `CitationPill`, `Sidebar`, `SendButton`, `AutoExpandTextarea`, `EmptyState`, `StatusBubble`, `StreamingDots`, `ErrorBoundary`, `Icons`, `AuthProvider`, `AuthCard`, `AuthInput`, `AuthButton`
-  - `components/ui/` — `liquid-glass-button` (glassmorphism button, Radix Slot + CVA), `shader-background` (WebGL animated canvas)
   - `lib/` — `types.ts`, `constants.ts`, `utils.ts`, `supabase.ts`, `api.ts`
   - `app/login/` — login page
   - `app/register/` — register page

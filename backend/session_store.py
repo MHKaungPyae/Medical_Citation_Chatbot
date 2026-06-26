@@ -38,16 +38,10 @@ class SessionStore:
         lines: list[str] = []
         for msg in result.data:
             role_label = "User" if msg["role"] == "user" else "Assistant"
-            content = msg["content"]
-            lines.append(f"{role_label}: {content}")
+            lines.append(f"{role_label}: {msg['content']}")
         return "\n".join(lines)
 
-    async def save(
-        self,
-        session_id: str,
-        role: str,
-        content: str,
-    ) -> None:
+    async def save(self, session_id: str, role: str, content: str) -> None:
         """Append a message to *session_id*. Creates session if it doesn't exist."""
         db = get_supabase()
 
@@ -65,12 +59,11 @@ class SessionStore:
                 return
 
         try:
-            insert_data: dict = {
+            db.table("messages").insert({
                 "session_id": session_id,
                 "role": role,
                 "content": content,
-            }
-            db.table("messages").insert(insert_data).execute()
+            }).execute()
         except Exception as exc:
             logger.warning("Could not save message to session %s: %s", session_id, exc)
 

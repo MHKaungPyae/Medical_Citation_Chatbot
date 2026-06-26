@@ -1,6 +1,6 @@
 """Shared retry helper for external HTTP calls.
 
-Both wikipedia and openfda_client use this instead of maintaining their
+Both pubmed_client and openfda_client use this instead of maintaining their
 own retry loops.
 """
 

@@ -1,7 +1,7 @@
 # System Specification: Medical Citation Chatbot
 
 > **Version:** 0.1.0  
-> **Last updated:** 2026-06-27  
+> **Last updated:** 2026-06-18  
 > **Scope:** This document describes the system *as built*, not as planned. For roadmap and history see `plan/project-overview/`.
 
 ---
@@ -23,7 +23,7 @@ User → Next.js (:3000) → FastAPI (:8000) → Wikipedia / OpenFDA / Ollama
 | Frontend | Next.js 16 (App Router) + TypeScript + Tailwind CSS |
 | Backend | FastAPI + Python 3.12 |
 | Streaming | Server-Sent Events (SSE) over HTTP |
-| Text LLM | `medgemma1.5:4b-it-q8_0` via Ollama (local) |
+| LLM | `qwen2.5:7b` via Ollama (local) |
 | APIs | Wikipedia MediaWiki, OpenFDA Drug Label |
 | HTTP | `httpx` (async) |
 | Auth | Supabase Auth (JWT) + `python-jose` verification |
@@ -45,11 +45,11 @@ main.py
   │     ├── retry.py                   ← shared HTTP retry with Retry-After
   │     └── logging_setup.py           ← request-ID context var
   ├── routers/session_routes.py        ← session CRUD API (auth-protected)
-  ├── auth.py                          ← JWT verification (python-jose + ES256/JWKS)
+  ├── auth.py                          ← JWT verification (python-jose)
   └── supabase_client.py               ← Supabase client singleton
 ```
 
-`rxnav_client.py`, `vision_client.py`, `storage_client.py` were deleted.
+`rxnav_client.py` was deleted — heuristic drug extraction proved sufficient.
 
 ### 2.2 Endpoints
 
@@ -186,10 +186,9 @@ Phase 7 — Persist conversation
 
 ### 2.6 Ollama Integration
 
-**Text Generation (medgemma1.5):**
 ```
 POST http://localhost:11434/api/generate
-Body: {"model": "medgemma1.5:4b-it-q8_0", "prompt": "<assembled prompt>", "stream": true}
+Body: {"model": "qwen2.5:7b", "prompt": "<assembled prompt>", "stream": true}
 Timeout: 120s total, 10s connect
 ```
 
@@ -219,12 +218,11 @@ Only indices actually present in the final normalized text are included in the `
 
 ```
 layout.tsx
-  ├── ShaderBackground.tsx           ← WebGL animated shader canvas (full-page, behind everything)
   └── AuthProvider.tsx               ← Supabase auth context (wraps all pages)
         ├── page.tsx                 ← auth guard (redirects to /login if unauthenticated)
-        │     ├── Sidebar.tsx        ← frosted glass panel, session list + user profile at bottom
-        │     ├── ChatContainer.tsx  ← main chat area (transparent over shader)
-        │     │     ├── EmptyState.tsx (returns null — no placeholder UI)
+        │     ├── Sidebar.tsx        ← session list + user profile at bottom
+        │     ├── ChatContainer.tsx  ← main chat area
+        │     │     ├── EmptyState.tsx
         │     │     ├── MessageList.tsx
         │     │     │     └── MessageBubble.tsx
         │     │     │           ├── InlineCitation.tsx
@@ -232,14 +230,14 @@ layout.tsx
         │     │     ├── StatusBubble.tsx
         │     │     └── StreamingDots.tsx
         │     ├── AutoExpandTextarea.tsx
-        │     └── SendButton.tsx     ← LiquidGlassButton (glassmorphism, Radix Slot + CVA)
+        │     └── SendButton.tsx
         ├── /login/page.tsx          ← login form (AuthCard + AuthInput + AuthButton)
         └── /register/page.tsx       ← register form (AuthCard + AuthInput + AuthButton)
 ```
 
 ### 3.2 State Management
 
-Single `useReducer` with **11 action types**:
+Single `useReducer` with **12 action types**:
 
 | Action | Purpose |
 |--------|---------|
@@ -310,7 +308,7 @@ Inline markers `[[CITATION:N]]` in the response text are parsed by `MessageBubbl
 
 | State | Visual |
 |-------|--------|
-| **Idle** | Empty space (EmptyState returns null — just the shader background visible) |
+| **Idle** | EmptyState ("Medical Research Assistant" + example question chips) |
 | **Searching** | StatusBubble: "Searching medical sources..." |
 | **Streaming** | StreamingDots animation + token-by-token text appearing |
 | **Complete** | Full text + inline citations + citation pills |
@@ -366,7 +364,7 @@ GET https://api.fda.gov/drug/label.json
 
 ```
 POST http://localhost:11434/api/generate
-Body: {"model": "medgemma1.5:4b-it-q8_0", "prompt": "...", "stream": true}
+Body: {"model": "qwen2.5:7b", "prompt": "...", "stream": true}
 → NDJSON stream: {"response": "token", "done": false} per line
 → Final: {"done": true}
 ```
@@ -383,7 +381,7 @@ All settings in `backend/config.py`:
 | Constant | Value | Notes |
 |----------|-------|-------|
 | `OLLAMA_URL` | `http://localhost:11434/api/generate` | |
-| `OLLAMA_MODEL` | `medgemma1.5:4b-it-q8_0` | |
+| `OLLAMA_MODEL` | `qwen2.5:7b` | |
 | `OLLAMA_TIMEOUT` | 120s total, 10s connect | |
 | `OPENFDA_ENDPOINT` | `https://api.fda.gov/drug/label.json` | |
 | `OPENFDA_TIMEOUT` | 10s total, 5s connect | |
@@ -452,8 +450,6 @@ All settings in `backend/config.py`:
 | `semantic_scholar_client.py` | earlier | Severe 429 rate limiting |
 | `rag_pipeline.py` | earlier | Full redesign → `symptom_pipeline.py` |
 | `rxnav_client.py` | 2026-06-18 | Unwired, then deleted — heuristic extraction sufficient |
-| `vision_client.py` | 2026-06-27 | Image feature removed |
-| `storage_client.py` | 2026-06-27 | Image feature removed |
 
 ---
 
@@ -464,5 +460,6 @@ All settings in `backend/config.py`:
 | **No unit tests** | Regression risk on edits | Manual curl testing |
 | **No evaluation baseline** | Cannot measure answer quality | Planned, not yet done |
 | **No frontend tests** | UI regression risk | Manual browser testing |
+| **Single model (qwen2.5:7b)** | No fallback if model unavailable | Connection error surfaced to user |
 | **Heuristic drug extraction** | May miss unusual drug names | 3-pass extraction (capitalized + all-caps + lowercase) catches most |
 | **No rate limiting** | OpenFDA has rate limits | Retry logic handles 429; no explicit client-side throttling |

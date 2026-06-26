@@ -9,7 +9,7 @@
 cd backend
 source .venv/bin/activate
 pip install -r requirements.txt
-ollama pull medgemma1.5:4b-it-q8_0
+ollama pull qwen2.5:7b
 cd .. && find backend -type d -name __pycache__ -exec rm -rf {} + && PYTHONPATH=. uvicorn backend.main:app --reload --port 8000
 
 # Frontend
@@ -44,7 +44,7 @@ Phase 4: Citation metadata — build citation list from Wiki + FDA results
   ↓
 Phase 5: Build minimal prompt (context + "answer helpfully, cite [[CITATION:N]], include disclaimer")
   ↓
-Phase 6: Stream — citation metadata → info/warning → medgemma1.5:4b-it-q8_0 token stream
+Phase 6: Stream — citation metadata → info/warning → qwen2.5:7b token stream
   ↓
 Phase 7: Persist conversation to session store
   ↓
@@ -61,22 +61,22 @@ Citation post-processing: normalise markers → filter used citations → done e
 | `backend/config.py` | Centralised config: all endpoints, timeouts, model name, prompt limits. Loads `.env` via `load_dotenv` |
 | `backend/retry.py` | Shared HTTP retry with Retry-After parsing, exponential backoff |
 | `backend/session_store.py` | Supabase-backed session/message persistence (6-turn history window) |
-| `backend/auth.py` | JWT verification middleware — validates Supabase tokens (HS256 + ES256/JWKS), exposes `get_current_user` dependency |
+| `backend/auth.py` | JWT verification middleware — validates Supabase tokens, exposes `get_current_user` dependency |
 | `backend/routers/session_routes.py` | Session CRUD API (GET/POST/PATCH/DELETE), all auth-protected with ownership checks |
 | `backend/supabase_client.py` | Supabase client singleton (uses `SUPABASE_URL` + `SUPABASE_KEY` from env) |
 | `backend/logging_setup.py` | Structured logging with request-ID via context var |
 | `backend/main.py` | FastAPI server, POST /api/chat SSE dispatch, session router, shutdown hooks |
 | `frontend/hooks/useChatController.ts` | Single hook: reducer + stream + session store + debounced persistence |
 | `frontend/hooks/useChatStream.ts` | SSE consumer (authenticatedFetch + ReadableStream + CRLF-safe parsing) |
-| `frontend/hooks/useChatReducer.ts` | 13-action useReducer for chat state |
+| `frontend/hooks/useChatReducer.ts` | 12-action useReducer for chat state |
 | `frontend/hooks/useSessionStore.ts` | API-backed sessions — CRUD via Supabase-authenticated fetch calls |
 | `frontend/hooks/useAuth.ts` | Supabase auth hook: signIn, signUp, signOut, getToken, onAuthStateChange |
 | `frontend/lib/supabase.ts` | Supabase client singleton (env-var validated) |
 | `frontend/lib/api.ts` | `authenticatedFetch` — injects Supabase session JWT into requests |
 | `frontend/components/AuthProvider.tsx` | React context provider for auth state, exposes `useAuthContext()` |
-| `frontend/components/AuthCard.tsx` | Shared auth page layout — frosted glass card (`bg-black/25 backdrop-blur-md`) with footer link |
-| `frontend/components/AuthInput.tsx` | Styled input — translucent bg, white text, indigo focus ring, error state |
-| `frontend/components/AuthButton.tsx` | Submit button — indigo gradient with loading state |
+| `frontend/components/AuthCard.tsx` | Shared auth page layout (logo + card + footer link) |
+| `frontend/components/AuthInput.tsx` | Styled input with label, error state, focus ring |
+| `frontend/components/AuthButton.tsx` | Submit button with loading state |
 | `frontend/app/login/page.tsx` | Login page (email + password, validation, error display) |
 | `frontend/app/register/page.tsx` | Register page (email + password + display name, validation) |
 | `frontend/components/MessageBubble.tsx` | Renders text with [[CITATION:N]] → inline [Wikipedia ↗] / [FDA ↗] tags |
@@ -84,8 +84,6 @@ Citation post-processing: normalise markers → filter used citations → done e
 | `frontend/components/CitationPill.tsx` | Rich citation pills below message (title, source, external link) |
 | `frontend/components/ErrorBoundary.tsx` | React error boundary — catches render crashes, shows recovery UI |
 | `frontend/components/Icons.tsx` | Shared icon components (Menu, Close, Trash, ChevronDown, Send, Stop, Spinner) |
-| `frontend/components/ui/liquid-glass-button.tsx` | Glassmorphism button (Radix Slot + CVA + tailwind-merge) |
-| `frontend/components/ui/shader-background.tsx` | WebGL animated shader canvas (full-page background) |
 
 ## Conventions
 
@@ -100,7 +98,7 @@ Citation post-processing: normalise markers → filter used citations → done e
 - **Environment variables:** Backend uses `load_dotenv()` in `config.py` to load `backend/.env`. Frontend uses `.env.local` for `NEXT_PUBLIC_SUPABASE_*` vars. Never commit `.env` files.
 - **Pycache:** Always run `find backend -type d -name __pycache__ -exec rm -rf {} +` after code changes before restarting uvicorn.
 - **Python deps:** Always activate the venv (`source backend/.venv/bin/activate`) before running anything.
-- **Deleted files:** `prompts.py`, `query_classifier.py`, `classifier_data.py`, `pubmed_client.py`, `semantic_scholar_client.py`, `rag_pipeline.py`, `rxnav_client.py`, `vision_client.py`, `storage_client.py` — do not recreate any of these.
+- **Deleted files:** `prompts.py`, `query_classifier.py`, `classifier_data.py`, `pubmed_client.py`, `semantic_scholar_client.py`, `rag_pipeline.py`, `rxnav_client.py` — do not recreate any of these.
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,

@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useChatReducer } from '@/hooks/useChatReducer';
 import { useChatStream } from '@/hooks/useChatStream';
 import { useSessionStore } from '@/hooks/useSessionStore';
-import type { Citation } from '@/lib/types';
 
 export function useChatController() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -39,10 +38,6 @@ export function useChatController() {
     loadSession,
     setSessionId,
   } = useChatReducer(activeSessionId || undefined);
-
-  // Keep a ref to current messages for use in async callbacks
-  const messagesRef = useRef(state.messages);
-  messagesRef.current = state.messages;
 
   const { sendMessage, cancelStream } = useChatStream({
     sessionId: state.sessionId,
@@ -108,8 +103,7 @@ export function useChatController() {
   // ── handlers ────────────────────────────────────────────────────────────
 
   const handleSend = useCallback(() => {
-    if (state.isStreaming) return;
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || state.isStreaming) return;
     const query = inputValue.trim();
     setInputValue('');
     sendMessage(query);

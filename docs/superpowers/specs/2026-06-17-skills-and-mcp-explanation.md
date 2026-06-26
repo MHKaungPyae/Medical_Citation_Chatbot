@@ -26,9 +26,9 @@
 **What it does:** Design intelligence for web interfaces — 50+ styles, 161 color palettes, 57 font pairings, UX guidelines across 10 stacks including React, Next.js, and Tailwind. Covers buttons, modals, navbars, cards, tables, forms, and charts.
 
 **Why I used it for this step:** The user explicitly requested it: "use the ui-ux-promax plugin." More specifically:
-- The original "Warm Wellness" style with teal+amber palette was chosen from this skill's design vocabulary (later replaced by a glassmorphism design with indigo accents)
+- The "Warm Wellness" style with teal+amber palette, rounded shapes, and pill elements was chosen from the design vocabulary this skill provides
 - The clinical-yet-approachable tone matches medical UX guidelines in the skill
-- Color contrast ratios for accessibility were informed by the skill's accessibility standards (original warm-toned palette later replaced by glassmorphism)
+- Color contrast ratios for accessibility (teal on white, warm-gray on cream) are informed by the skill's accessibility standards
 - The component patterns (pill badges, ghost status bubbles, auto-expand textarea) follow the skill's catalog of proven UI patterns
 
 **When to use in later phases:** During Phase 4 implementation — when actually building the React components, this skill provides Tailwind patterns, hover states, and responsive breakpoint guidance.
@@ -90,7 +90,7 @@
 - Always use FastAPI (not Flask/Django)
 - Always use Next.js + React + Tailwind (not Vue/Svelte)
 - Always use live Wikipedia/OpenFDA APIs (no ChromaDB, FAISS, or any local vector database)
-- Always use Ollama with `medgemma1.5:4b-it-q8_0` (no cloud LLM APIs)
+- Always use Ollama with `qwen2.5:7b` (no cloud LLM APIs)
 - SSE for streaming (not WebSockets)
 - `httpx.AsyncClient` for all outbound HTTP
 - `[[CITATION:N]]` format for citations

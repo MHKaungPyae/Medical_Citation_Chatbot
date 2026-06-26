@@ -49,27 +49,14 @@ async def close_ollama_client() -> None:
         _ollama_client = None
 
 
-async def _stream_ollama(
-    prompt: str,
-) -> AsyncGenerator[tuple[str, dict], None]:
+async def _stream_ollama(prompt: str) -> AsyncGenerator[tuple[str, dict], None]:
     """Stream tokens from Ollama, yielding (event_type, data_dict) tuples."""
     client = _get_ollama_client()
-
-    payload: dict = {
-        "model": OLLAMA_MODEL,
-        "prompt": prompt,
-        "stream": True,
-    }
-
-    # medgemma expects chat-template formatting
-    formatted = f"<start_of_turn>user\n{prompt}<end_of_turn>\n<start_of_turn>model\n"
-    payload["prompt"] = formatted
-
     try:
         async with client.stream(
             "POST",
             OLLAMA_URL,
-            json=payload,
+            json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": True},
         ) as response:
             response.raise_for_status()
             token_count = 0
@@ -314,10 +301,7 @@ def _build_prompt(
 
 # ── main entry point ────────────────────────────────────────────────────────
 
-async def run(
-    query: str,
-    session_id: str,
-) -> AsyncGenerator[str, None]:
+async def run(query: str, session_id: str) -> AsyncGenerator[str, None]:
     """Answer a medical question, yielding SSE events.
 
     Always searches Wikipedia and OpenFDA regardless of query content.
@@ -455,11 +439,10 @@ async def run(
     full_text = _normalize_citation_markers(full_text)
     used_indices = _extract_citations(full_text)
 
-    done_payload: dict = {
+    yield _sse_event("done", {
         "full_text": full_text,
         "citations": [c for c in citations if c["index"] in used_indices],
-    }
-    yield _sse_event("done", done_payload)
+    })
 
     # ── Phase 7: Persist conversation ───────────────────────────────────
     if session_id:
