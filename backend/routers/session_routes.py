@@ -37,6 +37,7 @@ class MessageOut(BaseModel):
     role: str
     content: str
     citations_json: str | None = None
+    image_url: str | None = None
     created_at: str
 
 
@@ -99,7 +100,7 @@ async def get_messages(
 
     result = (
         db.table("messages")
-        .select("id,role,content,citations_json,created_at")
+        .select("id,role,content,citations_json,image_url,created_at")
         .eq("session_id", session_id)
         .order("created_at", desc=False)
         .execute()
@@ -110,6 +111,7 @@ async def get_messages(
             role=m["role"],
             content=m["content"],
             citations_json=m.get("citations_json"),
+            image_url=m.get("image_url"),
             created_at=m["created_at"],
         )
         for m in (result.data or [])

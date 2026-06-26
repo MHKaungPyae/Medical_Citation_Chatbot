@@ -17,8 +17,10 @@ load_dotenv(_env_path)
 # ── Ollama ─────────────────────────────────────────────────────────────────
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "qwen2.5:7b"
+OLLAMA_MODEL = "medgemma1.5:4b-it-q8_0"
+VISION_MODEL = "llava:7b"  # Fast image analysis (describes image for medgemma)
 OLLAMA_TIMEOUT = httpx.Timeout(120.0, connect=10.0)
+VISION_TIMEOUT = httpx.Timeout(60.0, connect=10.0)  # Faster timeout for vision
 
 # ── OpenFDA ────────────────────────────────────────────────────────────────
 
@@ -43,8 +45,9 @@ SESSION_TTL_SECONDS = 1800  # 30 minutes
 
 # ── Prompt guard ───────────────────────────────────────────────────────────
 
-# qwen2.5:7b has ~32K context.  We warn when the assembled prompt exceeds
-# ~6000 tokens (≈ 4500 words for medical English).
+# medgemma1.5:4b-it-q8_0 has ~32K context. We warn when the assembled prompt
+# exceeds ~6000 tokens (≈ 4500 words for medical English).
+# Image analysis uses llava:7b (fast) to describe images for medgemma.
 MAX_PROMPT_WORDS = 4500
 
 # Max output tokens from Ollama (≈ 3000 words). Prevents runaway generations.
@@ -57,3 +60,11 @@ class ErrorCode:
     INTERNAL_ERROR = "INTERNAL_ERROR"
     TIMEOUT = "TIMEOUT"
     CONNECTION_REFUSED = "CONNECTION_REFUSED"
+
+# ── Image Support ─────────────────────────────────────────────────────────
+MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
+SUPPORTED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+
+# ── Supabase Storage ──────────────────────────────────────────────────────
+STORAGE_BUCKET = "chat-images"
+STORAGE_SIGNED_URL_EXPIRY = 86400  # 1 day

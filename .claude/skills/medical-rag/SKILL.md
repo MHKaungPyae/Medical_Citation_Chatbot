@@ -8,7 +8,9 @@ This skill enforces the architectural constraints of the Medical Chatbot. Loaded
 ### Backend
 - **Framework:** FastAPI (Python 3.12+), NOT Flask, NOT Django.
 - **HTTP Client:** `httpx` with async support for all outbound API calls.
-- **LLM Runtime:** Ollama, running locally at `http://localhost:11434`, model `qwen2.5:7b`.
+- **LLM Runtime:** Ollama, running locally at `http://localhost:11434`.
+  - **Text model:** `medgemma1.5:4b-it-q8_0` — medical knowledge and response generation.
+  - **Vision model:** `llava:7b` — fast image analysis (describes images for medgemma).
 - **Streaming:** Server-Sent Events (SSE) over HTTP, NOT WebSockets.
 
 ### Frontend
@@ -27,6 +29,8 @@ This skill enforces the architectural constraints of the Medical Chatbot. Loaded
 ```
 User query (any medical question — accepted unconditionally)
   ↓
+Image analysis (if image provided): llava:7b describes image (fast, ~5-10s)
+  ↓
 Wikipedia: search raw query → get extracts
   ↓ (fallback: search extracted drug names if no articles found)
 Drug extraction: heuristic — capitalized words + lowercase 5-15 char words from query + Wiki text
@@ -35,9 +39,9 @@ OpenFDA: concurrent drug label searches for extracted names
   ↓
 Citation metadata: build citation list from Wiki articles + FDA results
   ↓
-Minimal prompt: context + "answer helpfully, cite [[CITATION:N]], include disclaimer"
+Minimal prompt: context + image description + "answer helpfully, cite [[CITATION:N]], include disclaimer"
   ↓
-Ollama qwen2.5:7b → SSE stream (token|citation|done|error|warning|info)
+Ollama medgemma1.5:4b-it-q8_0 → SSE stream (token|citation|done|error|warning|info)
 ```
 
 ## Rules
@@ -71,22 +75,25 @@ Ollama qwen2.5:7b → SSE stream (token|citation|done|error|warning|info)
 - SSE connections must never hang — always emit `event: error` on failure before closing.
 
 ### Code Organization:
-- `backend/` — 12 Python modules (11 active + 1 init):
-  - `main.py` — FastAPI server (SSE streaming route, session router, shutdown hooks)
+- `backend/` — 14 Python modules (13 active + 1 init):
+  - `main.py` — FastAPI server (SSE streaming routes, session router, shutdown hooks)
   - `symptom_pipeline.py` — self-contained pipeline (prompt building, drug extraction, context formatting, streaming — all inline)
   - `wiki_client.py` — Wikipedia MediaWiki API (raw query search + extracts, no suffix bias)
   - `openfda_client.py` — OpenFDA drug label API (OTC + Rx field extraction)
+  - `vision_client.py` — llava:7b image analysis (fast vision model for describing medical images)
+  - `storage_client.py` — Supabase Storage (image upload with signed URLs)
   - `config.py` — centralised configuration (endpoints, timeouts, model name, prompt limits, `load_dotenv`)
   - `retry.py` — shared HTTP retry helper with Retry-After parsing
   - `session_store.py` — Supabase-backed session/message persistence
-  - `auth.py` — JWT verification middleware (`python-jose`), `get_current_user` FastAPI dependency
+  - `auth.py` — JWT verification middleware (`python-jose` + ES256/JWKS), `get_current_user` FastAPI dependency
   - `routers/session_routes.py` — session CRUD API (GET/POST/PATCH/DELETE), auth-protected with ownership checks
   - `supabase_client.py` — Supabase client singleton (uses env vars)
   - `logging_setup.py` — structured logging with request-ID injection via contextvar
   - `__init__.py`
 - `frontend/` — Next.js 16 App Router + TypeScript + Tailwind CSS:
-  - `hooks/` — `useChatController`, `useChatReducer` (12 actions), `useChatStream`, `useSessionStore`, `useScrollManager`, `useAuth`
-  - `components/` — `ChatContainer` (React.memo), `MessageList`, `MessageBubble`, `InlineCitation`, `CitationPill`, `Sidebar`, `SendButton`, `AutoExpandTextarea`, `EmptyState`, `StatusBubble`, `StreamingDots`, `ErrorBoundary`, `Icons`, `AuthProvider`, `AuthCard`, `AuthInput`, `AuthButton`
+  - `hooks/` — `useChatController`, `useChatReducer` (13 actions), `useChatStream`, `useSessionStore`, `useScrollManager`, `useAuth`
+  - `components/` — `ChatContainer` (React.memo), `MessageList`, `MessageBubble`, `InlineCitation`, `CitationPill`, `ImagePreview`, `Sidebar`, `SendButton`, `AutoExpandTextarea`, `EmptyState`, `StatusBubble`, `StreamingDots`, `ErrorBoundary`, `Icons`, `AuthProvider`, `AuthCard`, `AuthInput`, `AuthButton`
+  - `components/ui/` — `liquid-glass-button` (glassmorphism button, Radix Slot + CVA), `shader-background` (WebGL animated canvas)
   - `lib/` — `types.ts`, `constants.ts`, `utils.ts`, `supabase.ts`, `api.ts`
   - `app/login/` — login page
   - `app/register/` — register page

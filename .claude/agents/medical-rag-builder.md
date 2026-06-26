@@ -61,12 +61,13 @@ Agent(prompt="Review the following files for bugs, edge cases, and security issu
 | `backend/__init__.py` | Package marker |
 | `backend/routers/__init__.py` | Package marker |
 
-### Frontend (32 TypeScript/TSX files)
+### Frontend (34 TypeScript/TSX files)
 
 | Directory | Key files |
 |-----------|-----------|
 | `hooks/` | `useChatController` (orchestrator), `useChatReducer` (12 actions), `useChatStream` (SSE consumer), `useSessionStore` (API CRUD), `useScrollManager`, `useAuth` |
 | `components/` | `ChatContainer`, `MessageList`, `MessageBubble`, `InlineCitation`, `CitationPill`, `Sidebar`, `SendButton`, `AutoExpandTextarea`, `EmptyState`, `StatusBubble`, `StreamingDots`, `ErrorBoundary`, `Icons`, `AuthProvider`, `AuthCard`, `AuthInput`, `AuthButton` |
+| `components/ui/` | `liquid-glass-button` (glassmorphism button, Radix Slot + CVA), `shader-background` (WebGL animated canvas) |
 | `lib/` | `types.ts`, `constants.ts`, `utils.ts`, `supabase.ts`, `api.ts` |
 | `app/` | `layout.tsx`, `page.tsx`, `login/page.tsx`, `register/page.tsx` |
 

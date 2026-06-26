@@ -31,6 +31,7 @@ async function fetchMessages(sessionId: string): Promise<Message[]> {
     content: m.content as string,
     citations: m.citations_json ? JSON.parse(m.citations_json as string) : [],
     status: 'done' as const,
+    ...(m.image_url ? { imageUrl: m.image_url as string } : {}),
   }));
 }
 

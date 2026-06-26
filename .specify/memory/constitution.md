@@ -25,7 +25,7 @@
 
 ### I. Generative First (No Hardcoded Prompts)
 
-The LLM (`qwen2.5:7b`) is the decision-maker. The pipeline MUST provide context and minimal
+The LLM (`medgemma1.5:4b-it-q8_0`) is the decision-maker. The pipeline MUST provide context and minimal
 guidance only — never prescribe behavior, suggest specific medications, or reject queries
 based on keyword matching. No system prompts. No classifier modules. The model answers
 generatively from retrieved context.
@@ -103,7 +103,7 @@ failures or hanging streams erode trust.
 ## Additional Constraints: Technology Stack & Security
 
 **Technology:** The project uses FastAPI (Python 3.12+), Next.js 16 (TypeScript + Tailwind),
-Ollama (`qwen2.5:7b`), and httpx for async HTTP. These constraints exist because the
+Ollama (`medgemma1.5:4b-it-q8_0`), and httpx for async HTTP. These constraints exist because the
 user's environment (macOS, local Ollama) and preferences are fixed. Dependencies MUST
 NOT be added without reason and confirmation.
 
@@ -117,7 +117,7 @@ NOT be added without reason and confirmation.
 **Performance:**
 - Wikipedia search: max 3 articles per query, 800-char extracts, 2 retries.
 - OpenFDA: max 4 concurrent drug queries, 3 retries with exponential backoff.
-- Ollama: 120s total timeout, 32K context window via `qwen2.5:7b`.
+- Ollama: 120s total timeout, 32K context window via `medgemma1.5:4b-it-q8_0`.
 - Prompt word budget: 4500 words (~6000 tokens) — warn when exceeded.
 - Session store: 6-turn window, 30-minute TTL, in-memory only.
 - Frontend: debounced localStorage writes (500ms during streaming, immediate flush on done).

@@ -3,7 +3,7 @@
 
 github_username: mhkaungpyae
 personal_repo_url: https://github.com/mhkaungpyae/Medical_Citation_Chatbot
-project_summary: Generative RAG chatbot that answers any medical question using live data from Wikipedia and OpenFDA APIs, fed to a local qwen2.5:7b model via Ollama, streamed to a Next.js frontend with clickable citations and medical disclaimers. Supabase-backed auth (JWT) and persistent session/message storage.
+project_summary: Generative RAG chatbot that answers any medical question using live data from Wikipedia and OpenFDA APIs, fed to a local medgemma1.5:4b-it-q8_0 model via Ollama, streamed to a Next.js frontend with clickable citations and medical disclaimers. Supabase-backed auth (JWT) and persistent session/message storage.
 slides_url: slides/pitch.md
 
 ## Methodology
@@ -18,7 +18,7 @@ I followed a phased development approach (environment setup → backend foundati
 
 ### Skill
 - path: .claude/skills/medical-rag/SKILL.md
-- what: Project-scoped skill enforcing architectural constraints — FastAPI backend, Next.js + React + Tailwind frontend, local Ollama (qwen2.5:7b), Wikipedia MediaWiki + OpenFDA Drug Label live APIs, Supabase for auth + persistence. Forbids hardcoded system prompts, keyword classifiers, drug lists, Flask, Django, WebSockets, ChromaDB, FAISS, cloud LLMs, and any local vector store. Enforces SSE wire format (6 event types: token, citation, done, error, warning, info), `[[CITATION:N]]` markers rendered as clickable `[Wikipedia ↗]` (teal) / `[FDA ↗]` (amber) inline tags, concurrent API calls via `asyncio.gather()`, and Supabase JWT auth on all session routes. Pipeline: any query → Wikipedia (raw search) + drug extraction (heuristic) → OpenFDA (concurrent) → minimal prompt ("answer helpfully, cite sources, include disclaimer") → qwen2.5:7b streaming response.
+- what: Project-scoped skill enforcing architectural constraints — FastAPI backend, Next.js + React + Tailwind frontend, local Ollama (medgemma1.5:4b-it-q8_0), Wikipedia MediaWiki + OpenFDA Drug Label live APIs, Supabase for auth + persistence. Forbids hardcoded system prompts, keyword classifiers, drug lists, Flask, Django, WebSockets, ChromaDB, FAISS, cloud LLMs, and any local vector store. Enforces SSE wire format (6 event types: token, citation, done, error, warning, info), `[[CITATION:N]]` markers rendered as clickable `[Wikipedia ↗]` (teal) / `[FDA ↗]` (amber) inline tags, concurrent API calls via `asyncio.gather()`, and Supabase JWT auth on all session routes. Pipeline: any query → Wikipedia (raw search) + drug extraction (heuristic) → OpenFDA (concurrent) → minimal prompt ("answer helpfully, cite sources, include disclaimer") → medgemma1.5:4b-it-q8_0 streaming response.
 
 ### Agent
 - path: .claude/agents/medical-rag-builder.md

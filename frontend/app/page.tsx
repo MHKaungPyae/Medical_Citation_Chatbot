@@ -18,6 +18,8 @@ export default function Home() {
     sessions, activeSessionId,
     messages, statusMessage, isStreaming,
     inputValue, setInputValue,
+    selectedImage, imagePreviewUrl,
+    handleFileSelect, handleRemoveImage,
     handleSend, handleStop, handleExampleClick,
     handleNewChat, handleSwitchSession, handleDeleteSession,
   } = useChatController();
@@ -77,6 +79,10 @@ export default function Home() {
             onSend={handleSend}
             onStop={handleStop}
             onExampleClick={handleExampleClick}
+            selectedImage={selectedImage}
+            imagePreviewUrl={imagePreviewUrl}
+            onFileSelect={handleFileSelect}
+            onRemoveImage={handleRemoveImage}
           />
         </div>
       </ErrorBoundary>

@@ -16,8 +16,21 @@ function MessageBubble({ message }: MessageBubbleProps) {
   if (isUser) {
     return (
       <div className="mb-3 flex animate-fade-in justify-end">
-        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-teal-primary px-4 py-3 text-sm leading-relaxed text-white shadow-sm">
-          {message.content}
+        <div className="max-w-[80%] space-y-2">
+          {message.imageUrl && (
+            <div className="flex justify-end">
+              <img
+                src={message.imageUrl}
+                alt="Uploaded image"
+                className="max-h-64 rounded-2xl rounded-br-md object-cover ring-1 ring-white/20 shadow-sm"
+              />
+            </div>
+          )}
+          {message.content && (
+            <div className="rounded-2xl rounded-br-md bg-teal-primary px-4 py-3 text-sm leading-relaxed text-white shadow-sm">
+              {message.content}
+            </div>
+          )}
         </div>
       </div>
     );
