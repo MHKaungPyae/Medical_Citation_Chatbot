@@ -489,11 +489,33 @@ async def run(query: str, session_id: str, user_id: str = "") -> AsyncGenerator[
             ),
         })
 
-    # 7d — token stream from Ollama
+    # 7d — token stream from Ollama (filter thinking tokens in real-time)
+    # MedGemma emits <unusedN>...<unusedN> thinking blocks.  We buffer
+    # until the closing tag appears, then stream only the post-thinking text.
+    _think_buf = ""
+    _past_thinking = False
     async for event_type, data in _stream_ollama(prompt):
-        yield _sse_event(event_type, data)
-        if event_type == "token":
-            full_text += data.get("text", "")
+        if event_type != "token":
+            yield _sse_event(event_type, data)
+            continue
+        token_text = data.get("text", "")
+        full_text += token_text
+        if _past_thinking:
+            yield _sse_event("token", {"text": token_text})
+            continue
+        _think_buf += token_text
+        # Check if we've collected the full thinking block (two <unused> tags)
+        tags = list(re.finditer(r"<unused\d+>", _think_buf))
+        if len(tags) >= 2:
+            # Thinking block complete — emit only text after the closing tag
+            _past_thinking = True
+            after = _think_buf[tags[1].end():]
+            if after:
+                yield _sse_event("token", {"text": after})
+        elif len(tags) == 1 and "<unused" not in _think_buf[tags[0].end():]:
+            # Only one tag and no second one forming — not a thinking block
+            _past_thinking = True
+            yield _sse_event("token", {"text": _think_buf})
 
     # 7e — strip thinking tokens, prompt leaks, citation post-processing + done
     full_text = _strip_thinking_tokens(full_text)
