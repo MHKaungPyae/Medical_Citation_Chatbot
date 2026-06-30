@@ -18,7 +18,7 @@ load_dotenv(_env_path)
 
 OLLAMA_BASE = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_URL = f"{OLLAMA_BASE}/api/generate"
-OLLAMA_MODEL = "medgemma:4b"
+OLLAMA_MODEL = "medgemma1.5:4b-it-q8_0"
 OLLAMA_TIMEOUT = httpx.Timeout(120.0, connect=10.0)
 
 # ── OpenFDA ────────────────────────────────────────────────────────────────
