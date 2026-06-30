@@ -9,7 +9,7 @@
 cd backend
 source .venv/bin/activate
 pip install -r requirements.txt
-ollama pull medgemma1.5:4b-it-q4_K_M
+ollama pull medgemma1.5:4b-it-q8_0
 cd .. && find backend -type d -name __pycache__ -exec rm -rf {} + && PYTHONPATH=. uvicorn backend.main:app --reload --port 8000
 
 # Frontend
@@ -44,7 +44,7 @@ Phase 4: Citation metadata — build citation list from Wiki + FDA results
   ↓
 Phase 5: Build minimal prompt (context + "answer helpfully, cite [[CITATION:N]], include disclaimer")
   ↓
-Phase 6: Stream — citation metadata → info/warning → medgemma1.5:4b-it-q4_K_M token stream
+Phase 6: Stream — citation metadata → info/warning → medgemma1.5:4b-it-q8_0 token stream
   ↓
 Phase 7: Persist conversation to session store
   ↓

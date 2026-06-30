@@ -51,7 +51,7 @@ User → Vercel (Next.js) → Render (FastAPI) → Wikipedia / OpenFDA / ngrok �
         (JWT tokens)         (sessions + messages)
 ```
 
-**Stack:** FastAPI · Next.js 16 · Ollama (medgemma1.5) · Supabase · TypeScript · Tailwind CSS
+**Stack:** FastAPI · Next.js 16 · Ollama (medgemma1.5:4b-it-q8_0) · Supabase · TypeScript · Tailwind CSS
 
 **Deployment:**
 - **Frontend:** Vercel — `medical-citation-chatbot.vercel.app`

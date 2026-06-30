@@ -8,7 +8,7 @@ This skill enforces the architectural constraints of the Medical Chatbot. Loaded
 ### Backend
 - **Framework:** FastAPI (Python 3.12+), NOT Flask, NOT Django.
 - **HTTP Client:** `httpx` with async support for all outbound API calls.
-- **LLM Runtime:** Ollama, running locally at `http://localhost:11434`, model `medgemma1.5:4b-it-q4_K_M`.
+- **LLM Runtime:** Ollama, running locally at `http://localhost:11434`, model `medgemma1.5:4b-it-q8_0`.
 - **Streaming:** Server-Sent Events (SSE) over HTTP, NOT WebSockets.
 
 ### Frontend
@@ -37,7 +37,7 @@ Citation metadata: build citation list from Wiki articles + FDA results
   ↓
 Minimal prompt: context + "answer helpfully, cite [[CITATION:N]], include disclaimer"
   ↓
-Ollama medgemma1.5:4b-it-q4_K_M → SSE stream (token|citation|done|error|warning|info)
+Ollama medgemma1.5:4b-it-q8_0 → SSE stream (token|citation|done|error|warning|info)
 ```
 
 ## Rules

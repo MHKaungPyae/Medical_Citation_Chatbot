@@ -6,7 +6,7 @@ marp: true
 
 ## Goal
 
-Build a generative medical chatbot using FastAPI, React, and local Ollama (`qwen2.5:7b`) that retrieves live data from Wikipedia and OpenFDA APIs to answer any medical question — drug explanations, symptom inquiries, side effects, interactions, and more. Supabase provides auth and persistent storage.
+Build a generative medical chatbot using FastAPI, React, and local Ollama (`medgemma1.5:4b-it-q8_0`) that retrieves live data from Wikipedia and OpenFDA APIs to answer any medical question — drug explanations, symptom inquiries, side effects, interactions, and more. Supabase provides auth and persistent storage.
 
 > **History:** Started as PubMed + OpenFDA citation chatbot → pivoted to Wikipedia + OpenFDA generative RAG. Later removed hardcoded prompts, keyword classifier, and RxNav pipeline phase. Supabase added for auth + persistence.
 
@@ -18,7 +18,7 @@ Build a generative medical chatbot using FastAPI, React, and local Ollama (`qwen
 |-------|--------|-----------|
 | Frontend | Next.js 16 (App Router) + TypeScript + Tailwind CSS | Server components, App Router, type safety |
 | Backend | FastAPI + Python 3.12 | Async, SSE support, dependency injection |
-| LLM | `qwen2.5:7b` via Ollama (local) | 32K context, instruction-following, no cloud dependency |
+| LLM | `medgemma1.5:4b-it-q8_0` via Ollama (local) | 32K context, instruction-following, no cloud dependency |
 | Streaming | Server-Sent Events (SSE) over HTTP | Simple, unidirectional, works with fetch/ReadableStream |
 | HTTP Client | `httpx` (async) | Shared clients, timeout control, retry support |
 | Data Sources | Wikipedia MediaWiki + OpenFDA Drug Label | Free, no keys, medical coverage |
@@ -134,7 +134,7 @@ All three external services (Wiki, OpenFDA, Ollama) use shared `httpx.AsyncClien
 
 - 15 medical questions covering: drug info, side effects, interactions, symptoms, conditions
 - Score: groundedness (is the answer supported by sources?), citation accuracy (do citations exist and match?), medical disclaimer present
-- Run against qwen2.5:7b with current pipeline
+- Run against medgemma1.5:4b-it-q8_0 with current pipeline
 
 ---
 
