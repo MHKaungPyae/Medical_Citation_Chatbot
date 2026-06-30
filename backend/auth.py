@@ -1,36 +1,31 @@
 """Supabase JWT verification for FastAPI."""
 
-import base64
 import os
 import logging
 from typing import Optional
 
+import httpx
 from fastapi import Header, HTTPException, status
-from jose import JWTError, jwt
 
 logger = logging.getLogger(__name__)
 
-_SUPABASE_JWT_SECRET: Optional[bytes] = None
+_SUPABASE_URL: Optional[str] = None
+_SUPABASE_KEY: Optional[str] = None
 
 
-def _get_jwt_secret() -> bytes:
-    """Return the JWT secret, base64-decoded (Supabase provides it encoded)."""
-    global _SUPABASE_JWT_SECRET
-    if _SUPABASE_JWT_SECRET is None:
-        raw = os.environ.get("SUPABASE_JWT_SECRET", "")
-        if not raw:
-            raise RuntimeError("Missing SUPABASE_JWT_SECRET environment variable.")
-        # Supabase provides the secret as base64 — decode it
-        try:
-            _SUPABASE_JWT_SECRET = base64.b64decode(raw)
-        except Exception:
-            # If it's not valid base64, use as-is
-            _SUPABASE_JWT_SECRET = raw.encode()
-    return _SUPABASE_JWT_SECRET
+def _get_supabase_config() -> tuple[str, str]:
+    """Return Supabase URL and anon key."""
+    global _SUPABASE_URL, _SUPABASE_KEY
+    if _SUPABASE_URL is None:
+        _SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+        _SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+    if not _SUPABASE_URL or not _SUPABASE_KEY:
+        raise RuntimeError("Missing SUPABASE_URL or SUPABASE_KEY environment variable.")
+    return _SUPABASE_URL, _SUPABASE_KEY
 
 
 async def get_current_user(authorization: str = Header(...)) -> dict:
-    """Verify Supabase JWT and return user info.
+    """Verify Supabase JWT via Supabase Auth API and return user info.
 
     Returns dict with 'id' and 'email' keys.
     """
@@ -41,24 +36,37 @@ async def get_current_user(authorization: str = Header(...)) -> dict:
         )
 
     token = authorization[7:]
-    secret = _get_jwt_secret()
+    supabase_url, supabase_key = _get_supabase_config()
 
     try:
-        payload = jwt.decode(
-            token,
-            secret,
-            algorithms=["HS256", "HS384", "HS512"],
-            options={"verify_aud": False},
-        )
-    except JWTError as exc:
-        logger.warning("JWT verification failed: %s", exc)
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{supabase_url}/auth/v1/user",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "apikey": supabase_key,
+                },
+            )
+            if response.status_code != 200:
+                logger.warning(
+                    "Supabase auth check failed: %d %s",
+                    response.status_code,
+                    response.text[:200],
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid or expired token.",
+                )
+            user_data = response.json()
+    except httpx.HTTPError as exc:
+        logger.error("Supabase auth request failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token.",
+            detail="Could not verify token.",
         )
 
-    user_id = payload.get("sub")
-    email = payload.get("email", "")
+    user_id = user_data.get("id")
+    email = user_data.get("email", "")
 
     if not user_id:
         raise HTTPException(

@@ -1,6 +1,9 @@
 node_modules/
 .next/
 .env
+.env.local
+.env.production
+!*.env.example
 __pycache__/
 *.pyc
 .venv/

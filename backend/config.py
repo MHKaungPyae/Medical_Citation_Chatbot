@@ -16,7 +16,7 @@ load_dotenv(_env_path)
 
 # ── Ollama ─────────────────────────────────────────────────────────────────
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/generate")
 OLLAMA_MODEL = "medgemma1.5:4b-it-q4_K_M"
 OLLAMA_TIMEOUT = httpx.Timeout(120.0, connect=10.0)
 
