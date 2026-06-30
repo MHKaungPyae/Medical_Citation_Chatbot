@@ -95,6 +95,19 @@ async def _stream_ollama(prompt: str) -> AsyncGenerator[tuple[str, dict], None]:
         })
 
 
+# ── thinking token filter ──────────────────────────────────────────────────
+
+_THINKING_RE = re.compile(
+    r"<unused\d+>\s*thought\b.*?<unused\d+>",
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+def _strip_thinking_tokens(text: str) -> str:
+    """Remove MedGemma thinking blocks from the response."""
+    return _THINKING_RE.sub("", text).strip()
+
+
 # ── citation post-processing ────────────────────────────────────────────────
 
 def _normalize_citation_markers(text: str) -> str:
@@ -435,7 +448,8 @@ async def run(query: str, session_id: str) -> AsyncGenerator[str, None]:
         if event_type == "token":
             full_text += data.get("text", "")
 
-    # 7e — citation post-processing + done
+    # 7e — strip thinking tokens, citation post-processing + done
+    full_text = _strip_thinking_tokens(full_text)
     full_text = _normalize_citation_markers(full_text)
     used_indices = _extract_citations(full_text)
 
