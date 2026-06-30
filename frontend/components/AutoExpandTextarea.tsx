@@ -49,6 +49,7 @@ export default function AutoExpandTextarea({
       disabled={disabled}
       maxLength={maxLength}
       rows={1}
+      aria-label="Medical question input"
       className="flex-1 resize-none border-0 bg-transparent py-2 text-sm
                  text-white placeholder-white/50 outline-none
                  disabled:cursor-not-allowed disabled:opacity-50"

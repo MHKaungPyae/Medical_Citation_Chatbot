@@ -131,8 +131,9 @@ export function useSessionStore() {
     setSessions((prev) =>
       prev.map((s) => (s.id === sessionId ? { ...s, messages } : s)),
     );
-    return sessions.find((s) => s.id === sessionId) || null;
-  }, [sessions]);
+    // Return the session with freshly fetched messages, not the stale state object
+    return { id: sessionId, title: '', createdAt: 0, updatedAt: 0, messages } as Session;
+  }, []);
 
   const deleteSession = useCallback(async (sessionId: string) => {
     await deleteSessionApi(sessionId);

@@ -3,8 +3,9 @@
 import json
 import logging
 import os
+import uuid
 
-from fastapi import FastAPI, Header
+from fastapi import FastAPI, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -57,9 +58,10 @@ async def health():
 
 
 @app.post("/api/chat")
-async def chat(body: ChatRequest):
+async def chat(body: ChatRequest, current_user: dict = Depends(get_current_user)):
     query = body.query.strip()
-    session_id = body.session_id
+    session_id = body.session_id.strip() or uuid.uuid4().hex
+    user_id = current_user.get("id", "")
 
     if not query:
         async def _empty():
@@ -68,7 +70,7 @@ async def chat(body: ChatRequest):
 
     async def _safe_stream():
         try:
-            async for event in run_symptom_pipeline(query, session_id):
+            async for event in run_symptom_pipeline(query, session_id, user_id):
                 yield event
         except Exception:
             logger.exception("Unhandled error in symptom pipeline")

@@ -108,11 +108,32 @@ def _strip_thinking_tokens(text: str) -> str:
     return _THINKING_RE.sub("", text).strip()
 
 
+# ── output validation — strip leaked prompt structure ─────────────────────
+
+_PROMPT_LEAK_PATTERNS: list[re.Pattern] = [
+    re.compile(r"---\s*BEGIN\s+USER\s+INPUT\s*---", re.IGNORECASE),
+    re.compile(r"---\s*END\s+USER\s+INPUT\s*---", re.IGNORECASE),
+    re.compile(r"##\s*PREVIOUS\s+CONVERSATION", re.IGNORECASE),
+    re.compile(r"##\s*WIKIPEDIA\s+MEDICAL\s+INFORMATION", re.IGNORECASE),
+    re.compile(r"##\s*FDA\s+DRUG\s+LABEL\s+INFORMATION", re.IGNORECASE),
+    re.compile(r"##\s*USER'S\s+QUESTION", re.IGNORECASE),
+]
+
+
+def _strip_prompt_leaks(text: str) -> str:
+    """Remove any prompt structure that the LLM may have leaked."""
+    for pattern in _PROMPT_LEAK_PATTERNS:
+        text = pattern.sub("", text)
+    return text.strip()
+
+
 # ── citation post-processing ────────────────────────────────────────────────
 
 def _normalize_citation_markers(text: str) -> str:
     text = re.sub(r"\[\s*(\d+)\s*\]", r"[[CITATION:\1]]", text)
-    text = re.sub(r"\(\s*(\d+)\s*\)", r"[[CITATION:\1]]", text)
+    # Only match standalone parenthesized numbers (1)-(99) that look like
+    # citation markers — not "(5 mg)", "(see page 3)", etc.
+    text = re.sub(r"(?<![a-zA-Z])\((\d{1,2})\)(?![a-zA-Z/%])", r"[[CITATION:\1]]", text)
     text = re.sub(r"\[\[CITATION\s+(\d+)\]\]", r"[[CITATION:\1]]", text)
     # Strip literal [[CITATION:N]] — LLM copied the template literally
     text = text.replace("[[CITATION:N]]", "")
@@ -129,6 +150,7 @@ def _extract_citations(text: str) -> list[int]:
 
 # Words we skip when extracting potential drug names from Wiki text.
 _STOP_WORDS: frozenset[str] = frozenset({
+    # Articles, pronouns, conjunctions
     "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
     "have", "has", "had", "do", "does", "did", "will", "would", "could",
     "should", "may", "might", "can", "shall", "to", "of", "in", "for",
@@ -141,8 +163,9 @@ _STOP_WORDS: frozenset[str] = frozenset({
     "that", "this", "these", "those", "it", "its", "he", "she", "they",
     "them", "their", "his", "her", "my", "your", "our", "we", "you",
     "also", "about", "what", "which", "who", "whom", "without", "within",
+    # Medical / generic words that are not drug names
     "using", "used", "use", "due", "including", "include", "known",
-    "treatment", "symptoms", "medication", "dose", "mg", "effects",
+    "treatment", "symptoms", "medication", "dose", "doses", "mg", "effects",
     "side", "clinical", "patients", "patient", "study", "studies",
     "drug", "drugs", "medical", "medicine", "health", "disease",
     "condition", "cause", "caused", "causes", "common", "blood",
@@ -152,9 +175,28 @@ _STOP_WORDS: frozenset[str] = frozenset({
     "evidence", "data", "research", "reported", "found", "shown",
     "significant", "important", "potential", "different", "several",
     "number", "including", "years", "time", "day", "days",
-    "doses", "effect", "human", "history", "people", "person",
+    "effect", "human", "history", "people", "person",
     "oral", "topical", "injection", "tablet", "capsule", "typically",
     "generally", "recommended", "followed", "necessary", "following",
+    # Generic substances / non-drug terms that cause false-positive FDA lookups
+    "acid", "salt", "gold", "silver", "iron", "water", "sugar", "starch",
+    "calcium", "sodium", "potassium", "magnesium", "alcohol", "oxygen",
+    "nitrogen", "sulfur", "copper", "iodine", "flour", "honey", "lemon",
+    "ginger", "garlic", "turmeric", "cinnamon", "pepper", "mint", "basil",
+    "cream", "lotion", "gel", "oil", "paste", "powder", "syrup",
+    "vitamin", "mineral", "supplement", "herbal", "herb", "extract",
+    "formula", "solution", "mixture", "compound", "substance",
+    "adult", "child", "children", "infant", "elderly",
+    "morning", "evening", "night", "daily", "weekly",
+    "food", "meal", "diet", "eating", "drink",
+    "skin", "hair", "nail", "muscle", "bone", "joint",
+    "head", "neck", "chest", "back", "stomach", "throat",
+    "fever", "cough", "cold", "flu", "infection", "virus", "bacteria",
+    "allergy", "allergic", "reaction", "rash", "swelling", "nausea",
+    "vomiting", "diarrhea", "constipation", "headache", "dizziness",
+    "fatigue", "weakness", "insomnia", "anxiety", "depression",
+    "diabetes", "asthma", "arthritis", "cancer", "heart", "liver",
+    "kidney", "lung", "brain", "nerve", "thyroid",
 })
 
 
@@ -220,9 +262,6 @@ def _format_wiki_context(articles: list[dict], extracts: dict[int, str] | None =
             f"Source: {article.get('url', '')}\n"
         )
         if extract:
-            words = extract.split()
-            if len(words) > 400:
-                extract = " ".join(words[:400]) + "…"
             lines.append(f"Summary: {extract}\n")
         elif article.get("snippet"):
             lines.append(f"Summary: {article.get('snippet', '')}\n")
@@ -314,7 +353,7 @@ def _build_prompt(
 
 # ── main entry point ────────────────────────────────────────────────────────
 
-async def run(query: str, session_id: str) -> AsyncGenerator[str, None]:
+async def run(query: str, session_id: str, user_id: str = "") -> AsyncGenerator[str, None]:
     """Answer a medical question, yielding SSE events.
 
     Always searches Wikipedia and OpenFDA regardless of query content.
@@ -448,8 +487,9 @@ async def run(query: str, session_id: str) -> AsyncGenerator[str, None]:
         if event_type == "token":
             full_text += data.get("text", "")
 
-    # 7e — strip thinking tokens, citation post-processing + done
+    # 7e — strip thinking tokens, prompt leaks, citation post-processing + done
     full_text = _strip_thinking_tokens(full_text)
+    full_text = _strip_prompt_leaks(full_text)
     full_text = _normalize_citation_markers(full_text)
     used_indices = _extract_citations(full_text)
 
@@ -460,8 +500,8 @@ async def run(query: str, session_id: str) -> AsyncGenerator[str, None]:
 
     # ── Phase 7: Persist conversation ───────────────────────────────────
     if session_id:
-        await session_store.save(session_id, "user", query)
-        await session_store.save(session_id, "assistant", full_text)
+        await session_store.save(session_id, "user", query, user_id)
+        await session_store.save(session_id, "assistant", full_text, user_id)
 
     logger.info(
         "Response complete: tokens=%d citations=%d used=%d wiki=%d fda=%d",

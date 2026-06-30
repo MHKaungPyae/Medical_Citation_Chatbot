@@ -10,7 +10,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 import httpx
 
-# Load .env from backend/ directory (one level up from this file)
+# Load .env from backend/ directory (one level up from this file).
+# Note: this runs at import time — importing config.py in tests will also
+# trigger this.  Pass override=True or mock os.environ if needed.
 _env_path = Path(__file__).resolve().parent / ".env"
 load_dotenv(_env_path)
 

@@ -61,6 +61,7 @@ function ChatContainer({
             className="sticky bottom-4 mx-auto flex items-center gap-1.5 rounded-full
                        border border-white/20 bg-black/30 backdrop-blur-sm px-4 py-2 text-xs text-white/70
                        shadow-md transition-all hover:text-white"
+            aria-label="Scroll to bottom"
           >
             <IconChevronDown size={12} />
             Scroll to bottom

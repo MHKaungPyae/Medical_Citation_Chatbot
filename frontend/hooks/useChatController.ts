@@ -147,6 +147,7 @@ export function useChatController() {
   const handleDeleteSession = useCallback(
     async (sessionId: string) => {
       const sessionTitle = sessions.find((s) => s.id === sessionId)?.title || 'this conversation';
+      // TODO: replace window.confirm with a React modal for accessibility and testability
       if (!window.confirm(`Delete "${sessionTitle}"? This cannot be undone.`)) return;
 
       await deleteSession(sessionId);

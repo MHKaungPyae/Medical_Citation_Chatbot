@@ -30,6 +30,6 @@ def get_supabase() -> Client:
             )
 
         key_type = "service_role" if service_key else "anon"
-        logger.info("Supabase client: using %s key (starts with: %s...)", key_type, key[:20])
+        logger.info("Supabase client: using %s key", key_type)
         _supabase = create_client(url, key)
     return _supabase

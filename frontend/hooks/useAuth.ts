@@ -36,14 +36,14 @@ export function useAuth() {
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, displayName?: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: displayName ? { display_name: displayName } : undefined,
       },
     });
-    return { error };
+    return { error, session: data.session };
   }, []);
 
   const signOut = useCallback(async () => {

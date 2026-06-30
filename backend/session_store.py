@@ -41,21 +41,34 @@ class SessionStore:
             lines.append(f"{role_label}: {msg['content']}")
         return "\n".join(lines)
 
-    async def save(self, session_id: str, role: str, content: str) -> None:
-        """Append a message to *session_id*. Creates session if it doesn't exist."""
+    async def save(self, session_id: str, role: str, content: str, user_id: str = "") -> None:
+        """Append a message to *session_id*. Creates session if it doesn't exist.
+
+        Verifies the session belongs to *user_id* before writing. If the
+        session does not exist, it is created with the given *user_id*.
+        """
         db = get_supabase()
 
-        # Ensure session exists (create if missing)
-        existing = db.table("chat_sessions").select("id").eq("id", session_id).execute()
+        # Ensure session exists (create if missing) and verify ownership
+        existing = db.table("chat_sessions").select("user_id").eq("id", session_id).execute()
         if not existing.data:
             try:
                 db.table("chat_sessions").insert({
                     "id": session_id,
+                    "user_id": user_id,
                     "title": content[:100] if role == "user" else "New Chat",
                 }).execute()
             except Exception as exc:
-                # If session creation fails (e.g. missing user_id), log and skip save
                 logger.warning("Could not create session %s: %s", session_id, exc)
+                return
+        else:
+            # Session exists — verify the caller owns it
+            owner = existing.data[0].get("user_id", "")
+            if user_id and owner and owner != user_id:
+                logger.warning(
+                    "Ownership mismatch: session %s belongs to %s, not %s",
+                    session_id, owner, user_id,
+                )
                 return
 
         try:

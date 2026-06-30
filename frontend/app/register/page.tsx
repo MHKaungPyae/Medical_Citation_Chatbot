@@ -39,7 +39,7 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
-    const { error: authError } = await signUp(
+    const { error: authError, session: signUpSession } = await signUp(
       email.trim(),
       password,
       displayName.trim() || undefined,
@@ -51,8 +51,14 @@ export default function RegisterPage() {
       return;
     }
 
-    setSuccess('Account created! Redirecting...');
-    setTimeout(() => router.push('/'), 1000);
+    if (signUpSession) {
+      // Email confirmation disabled — user is already signed in
+      setSuccess('Account created! Redirecting...');
+      setTimeout(() => router.push('/'), 1000);
+    } else {
+      // Email confirmation enabled — user must verify first
+      setSuccess('Account created! Please check your email to verify your account, then sign in.');
+    }
   };
 
   return (
