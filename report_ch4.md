@@ -4,13 +4,13 @@
 
 - **GitHub username:** @mhkaungpyae
 - **Repo URL:** https://github.com/mhkaungpyae/Medical_Citation_Chatbot
-- **Live / download URL:** https://medical-citation-chatbot.vercel.app
+- **Live / download URL:** https://medical-citation-chatbot.vercel.app/
 - **License:** MIT
 - **One-line summary:** Generative RAG chatbot that answers any medical question using live Wikipedia and OpenFDA data, streamed through a local MedGemma model with clickable citations.
 
 ## Product-Intro Slides
 
-- **Slides path:** slides/pitch.md
+- **Slides path:** slides/intro.md
 
 ## Demo Screenshots
 

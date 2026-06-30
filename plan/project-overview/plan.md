@@ -1,10 +1,14 @@
+---
+marp: true
+---
+
 # Medical Chatbot — Project Plan
 
 ## Goal
 
-Build a generative medical chatbot using FastAPI, React, and local Ollama (`medgemma1.5:4b-it-q4_K_M`) that retrieves live data from Wikipedia and OpenFDA APIs to answer any medical question — drug explanations, symptom inquiries, side effects, interactions, and more. Supabase provides auth and persistent storage.
+Build a generative medical chatbot using FastAPI, React, and local Ollama (`qwen2.5:7b`) that retrieves live data from Wikipedia and OpenFDA APIs to answer any medical question — drug explanations, symptom inquiries, side effects, interactions, and more. Supabase provides auth and persistent storage.
 
-> **History:** Started as PubMed + OpenFDA citation chatbot → pivoted to Wikipedia + OpenFDA generative RAG. Later removed hardcoded prompts, keyword classifier, and RxNav client. Supabase added for auth + persistence.
+> **History:** Started as PubMed + OpenFDA citation chatbot → pivoted to Wikipedia + OpenFDA generative RAG. Later removed hardcoded prompts, keyword classifier, and RxNav pipeline phase. Supabase added for auth + persistence.
 
 ---
 
@@ -14,7 +18,7 @@ Build a generative medical chatbot using FastAPI, React, and local Ollama (`medg
 |-------|--------|-----------|
 | Frontend | Next.js 16 (App Router) + TypeScript + Tailwind CSS | Server components, App Router, type safety |
 | Backend | FastAPI + Python 3.12 | Async, SSE support, dependency injection |
-| LLM | `medgemma1.5:4b-it-q4_K_M` via Ollama (local) | 32K context, instruction-following, no cloud dependency |
+| LLM | `qwen2.5:7b` via Ollama (local) | 32K context, instruction-following, no cloud dependency |
 | Streaming | Server-Sent Events (SSE) over HTTP | Simple, unidirectional, works with fetch/ReadableStream |
 | HTTP Client | `httpx` (async) | Shared clients, timeout control, retry support |
 | Data Sources | Wikipedia MediaWiki + OpenFDA Drug Label | Free, no keys, medical coverage |
@@ -30,7 +34,7 @@ Build a generative medical chatbot using FastAPI, React, and local Ollama (`medg
 
 - [x] Phase 0: Environment & Agent Setup
 - [x] Phase 1: Local AI Engine (FastAPI + Ollama streaming)
-- [x] Phase 2: Live Medical Data Integration (Wikipedia, OpenFDA, RxNav built then deleted)
+- [x] Phase 2: Live Medical Data Integration (Wikipedia, OpenFDA, RxNav built then unwired)
 - [x] Phase 3: Web RAG Fusion (pipeline, prompt, session store, citations)
 - [x] Phase 4: Web Frontend (components, state, SSE consumer, citation rendering)
 - [x] Phase 5: Supabase Auth & Database (JWT middleware, session CRUD, login/register)
@@ -80,6 +84,9 @@ main.py
   ├── routers/session_routes.py        ← session CRUD API (auth-protected)
   ├── auth.py                          ← JWT verification (python-jose)
   └── supabase_client.py               ← Supabase client singleton
+
+Unused / standby:
+  rxnav_client.py   ← RxNorm drug name → RxCUI (unwired 2026-06-18)
 ```
 
 ---
@@ -127,7 +134,7 @@ All three external services (Wiki, OpenFDA, Ollama) use shared `httpx.AsyncClien
 
 - 15 medical questions covering: drug info, side effects, interactions, symptoms, conditions
 - Score: groundedness (is the answer supported by sources?), citation accuracy (do citations exist and match?), medical disclaimer present
-- Run against medgemma1.5:4b-it-q4_K_M with current pipeline
+- Run against qwen2.5:7b with current pipeline
 
 ---
 
@@ -137,26 +144,7 @@ All three external services (Wiki, OpenFDA, Ollama) use shared `httpx.AsyncClien
 |-----|---------|--------|
 | **Wikipedia (MediaWiki)** | ✅ Yes | Free, no key. Medical articles + extracts. |
 | **OpenFDA drug/label** | ✅ Yes | Free, no key. FDA labels with OTC + Rx fields. |
-| **RxNav/RxNorm** | ❌ No | Client built then deleted — heuristic extraction sufficient, added unnecessary latency. |
-| **DailyMed** | ❌ No | Redundant with OpenFDA. |
-| **Infermedica** | ❌ No | Commercial, rate-limited (100 req/d). |
-| **ClinicalTrials.gov** | ❌ No | Supplementary, not core. |
-| **NLM Drug Interaction** | ❌ No | Only useful for two-drug queries. |
-| **MyHealthFinder** | ❌ No | Prevention/screening only. |
-
----
-
-## Deleted / Unwired Modules
-
-| Module | When | Why |
-|--------|------|-----|
-| `prompts.py` | 2026-06-17 | Hardcoded prompt → minimal inline instruction |
-| `classifier_data.py` | 2026-06-17 | Drug/condition keyword lists → heuristic extraction |
-| `query_classifier.py` | 2026-06-17 | Keyword classifier → all queries proceed |
-| `pubmed_client.py` | earlier | Poor relevance, XML overhead, API key required |
-| `semantic_scholar_client.py` | earlier | Severe 429 rate limiting |
-| `rag_pipeline.py` | earlier | Full redesign → `symptom_pipeline.py` |
-| `rxnav_client.py` | 2026-06-18 | Unwired then deleted — heuristic extraction sufficient |
+| **RxNav/RxNorm** | ⬜ Standby | Client built but removed from pipeline (unnecessary latency). |
 
 ---
 
