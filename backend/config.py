@@ -10,16 +10,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 import httpx
 
-# Load .env from backend/ directory (one level up from this file).
-# Note: this runs at import time — importing config.py in tests will also
-# trigger this.  Pass override=True or mock os.environ if needed.
+# Load .env from backend/ directory (one level up from this file)
 _env_path = Path(__file__).resolve().parent / ".env"
 load_dotenv(_env_path)
 
 # ── Ollama ─────────────────────────────────────────────────────────────────
 
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/generate")
-OLLAMA_MODEL = "medgemma1.5:4b-it-q8_0"
+OLLAMA_BASE = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_URL = f"{OLLAMA_BASE}/api/generate"
+OLLAMA_MODEL = "medgemma:4b"
 OLLAMA_TIMEOUT = httpx.Timeout(120.0, connect=10.0)
 
 # ── OpenFDA ────────────────────────────────────────────────────────────────
@@ -45,8 +44,8 @@ SESSION_TTL_SECONDS = 1800  # 30 minutes
 
 # ── Prompt guard ───────────────────────────────────────────────────────────
 
-# medgemma1.5:4b-it-q8_0 has ~32K context.  We warn when the assembled prompt exceeds
-# ~6000 tokens (≈ 4500 words for medical English).
+# medgemma:4b has ~32K context.  We warn when the assembled prompt
+# exceeds ~6000 tokens (≈ 4500 words for medical English).
 MAX_PROMPT_WORDS = 4500
 
 # Max output tokens from Ollama (≈ 3000 words). Prevents runaway generations.
@@ -59,3 +58,12 @@ class ErrorCode:
     INTERNAL_ERROR = "INTERNAL_ERROR"
     TIMEOUT = "TIMEOUT"
     CONNECTION_REFUSED = "CONNECTION_REFUSED"
+
+# ── Image Support ─────────────────────────────────────────────────────────
+MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
+SUPPORTED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+
+# ── Supabase Storage ──────────────────────────────────────────────────────
+STORAGE_BUCKET = "chat-images"
+STORAGE_SIGNED_URL_EXPIRY = 86400  # 1 day
+
