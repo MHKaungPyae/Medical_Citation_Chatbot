@@ -28,6 +28,11 @@ logger = logging.getLogger(__name__)
 _shared_client: httpx.AsyncClient | None = None
 
 
+def init_client() -> None:
+    """Eagerly initialize the shared httpx.AsyncClient. Call at app startup."""
+    _get_client()
+
+
 def _get_client() -> httpx.AsyncClient:
     """Return a shared httpx.AsyncClient for OpenFDA requests."""
     global _shared_client

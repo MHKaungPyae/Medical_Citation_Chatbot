@@ -33,6 +33,11 @@ def _sse_event(event: str, data: dict) -> str:
 _ollama_client: httpx.AsyncClient | None = None
 
 
+def init_ollama_client() -> None:
+    """Eagerly initialize the shared httpx.AsyncClient. Call at app startup."""
+    _get_ollama_client()
+
+
 def _get_ollama_client() -> httpx.AsyncClient:
     """Return a shared httpx.AsyncClient for Ollama requests."""
     global _ollama_client
@@ -98,14 +103,17 @@ async def _stream_ollama(prompt: str) -> AsyncGenerator[tuple[str, dict], None]:
 # ── thinking token filter ──────────────────────────────────────────────────
 
 _THINKING_RE = re.compile(
-    r"<unused\d+>\s*thought\b.*?<unused\d+>",
-    re.DOTALL | re.IGNORECASE,
+    r"<unused\d+>.*?<unused\d+>",
+    re.DOTALL,
 )
 
 
 def _strip_thinking_tokens(text: str) -> str:
     """Remove MedGemma thinking blocks from the response."""
-    return _THINKING_RE.sub("", text).strip()
+    cleaned = _THINKING_RE.sub("", text).strip()
+    if cleaned != text.strip():
+        logger.info("Stripped thinking tokens (%d → %d chars)", len(text.strip()), len(cleaned))
+    return cleaned
 
 
 # ── output validation — strip leaked prompt structure ─────────────────────

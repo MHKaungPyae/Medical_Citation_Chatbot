@@ -24,6 +24,11 @@ _USER_AGENT = "MedicalCitationChatbot/1.0 (https://github.com/example/medical-ch
 _shared_client: httpx.AsyncClient | None = None
 
 
+def init_client() -> None:
+    """Eagerly initialize the shared httpx.AsyncClient. Call at app startup."""
+    _get_client()
+
+
 def _get_client() -> httpx.AsyncClient:
     """Return a shared httpx.AsyncClient with the required User-Agent header."""
     global _shared_client

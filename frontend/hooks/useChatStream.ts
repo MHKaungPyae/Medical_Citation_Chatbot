@@ -140,6 +140,7 @@ export function useChatStream({
           setError(ERROR_MESSAGES.SERVER_DOWN);
         }
       } finally {
+        // Always reset streaming state, even on non-abort errors
         isStreamingRef.current = false;
         abortControllerRef.current = null;
       }
