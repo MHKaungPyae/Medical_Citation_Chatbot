@@ -18,6 +18,8 @@
 }
 
 body {
+  margin: 0;
+  padding: 0;
   background: var(--color-cream-bg);
   color: var(--color-warm-gray);
   font-family: var(--font-sans);

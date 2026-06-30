@@ -1,6 +1,6 @@
 # 🩺 Medical Chatbot — Generative RAG
 
-A generative RAG chatbot that retrieves live data from **Wikipedia** and **OpenFDA**, feeds it to a local **qwen2.5:7b** model via **Ollama**, and streams cited responses to a React frontend. **Supabase** provides authentication and persistent session storage. No hardcoded prompts, no keyword classifiers — the LLM handles everything generatively.
+A generative RAG chatbot that retrieves live data from **Wikipedia** and **OpenFDA**, feeds it to a local **medgemma1.5:4b-it-q4_K_M** model via **Ollama**, and streams cited responses to a React frontend. **Supabase** provides authentication and persistent session storage. No hardcoded prompts, no keyword classifiers — the LLM handles everything generatively.
 
 ## How It Works
 
@@ -9,7 +9,7 @@ A generative RAG chatbot that retrieves live data from **Wikipedia** and **OpenF
 3. Drug names are extracted heuristically from the query and Wikipedia text (no keyword lists)
 4. OpenFDA is queried concurrently for each drug — both Rx and OTC label fields are extracted
 5. A minimal prompt is built: context + "answer the question, cite sources, include disclaimer" — no hardcoded behavior rules
-6. qwen2.5:7b streams a response token-by-token via **Server-Sent Events (SSE)**
+6. medgemma1.5:4b-it-q4_K_M streams a response token-by-token via **Server-Sent Events (SSE)**
 7. Frontend renders streaming text with `[[CITATION:N]]` markers as clickable inline `[Wikipedia ↗]` / `[FDA ↗]` tags
 
 ## Tech Stack
@@ -19,7 +19,7 @@ A generative RAG chatbot that retrieves live data from **Wikipedia** and **OpenF
 | **Frontend** | Next.js 16 (App Router) + TypeScript + Tailwind CSS |
 | **Backend** | FastAPI + Python 3.12 |
 | **Streaming** | Server-Sent Events (SSE) over HTTP |
-| **LLM** | qwen2.5:7b via Ollama (local, offline) |
+| **LLM** | medgemma1.5:4b-it-q4_K_M via Ollama (local, offline) |
 | **Data Sources** | Wikipedia (MediaWiki API), OpenFDA Drug Label |
 | **HTTP Client** | httpx (async) |
 | **Auth** | Supabase Auth (JWT) + python-jose verification |
@@ -163,7 +163,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # Pull the model
-ollama pull qwen2.5:7b
+ollama pull medgemma1.5:4b-it-q4_K_M
 ```
 
 ### 4. Setup Frontend
@@ -196,7 +196,7 @@ Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to 
 - 🤖 **Fully generative** — No hardcoded prompts, no keyword lists, no query classifier
 - 📎 **Clickable citations** — `[[CITATION:N]]` rendered as `[Wikipedia ↗]` (teal) / `[FDA ↗]` (amber) inline tags
 - ⚡ **Token-by-token streaming** — Responses appear as they're generated
-- 🧠 **Local model** — qwen2.5:7b runs entirely on your machine via Ollama
+- 🧠 **Local model** — medgemma1.5:4b-it-q4_K_M runs entirely on your machine via Ollama
 - 🔐 **User authentication** — Supabase Auth with JWT tokens, login/register pages
 - 💾 **Persistent sessions** — Chat history stored in Supabase PostgreSQL, survives restarts
 - 🛑 **Cancel during streaming** — Stop generation mid-response, keep partial text

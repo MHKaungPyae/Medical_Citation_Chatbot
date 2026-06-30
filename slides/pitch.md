@@ -48,7 +48,7 @@ User registers / logs in (Supabase Auth)
                               ↓
      Wikipedia → Paracetamol article, Glucosamine article
      OpenFDA   → FDA drug labels for both drugs
-     Ollama    → qwen2.5:7b streams response token-by-token
+     Ollama    → medgemma1.5:4b-it-q4_K_M streams response token-by-token
                               ↓
 "Paracetamol can rarely cause skin rashes… [Wikipedia ↗]
  FDA labels note rash as a potential adverse reaction… [FDA ↗]
@@ -65,7 +65,7 @@ Clickable `[Wikipedia ↗]` and `[FDA ↗]` citations inline — every claim is 
 # How I built it
 <!-- 20s -->
 
-**Stack:** FastAPI · Next.js 16 · Ollama (`qwen2.5:7b`) · Supabase · TypeScript · Tailwind
+**Stack:** FastAPI · Next.js 16 · Ollama (`medgemma1.5:4b-it-q4_K_M`) · Supabase · TypeScript · Tailwind
 
 **Design:** No hardcoded prompts, no classifiers, no drug lists. LLM handles everything generatively. Drug names extracted heuristically (3-pass). Deleted 5 modules over time — each replaced by simpler alternatives.
 
@@ -88,7 +88,7 @@ Every answer links to Wikipedia articles and FDA drug labels. Users can verify e
 No hardcoded "suggest OTC medication" scripts. The model adapts to any question — drug interactions, side effects, pregnancy safety, mechanism of action.
 
 **3. Local LLM, zero cost per query.**
-`qwen2.5:7b` runs on-device via Ollama. Wikipedia and OpenFDA need no API keys. The LLM never sends your data to the cloud.
+`medgemma1.5:4b-it-q4_K_M` runs on-device via Ollama. Wikipedia and OpenFDA need no API keys. The LLM never sends your data to the cloud.
 
 **4. Persistent user accounts.**
 Supabase Auth handles registration and login. Chat history persists in PostgreSQL across sessions and devices — no more lost conversations on page refresh.

@@ -17,7 +17,7 @@ load_dotenv(_env_path)
 # ── Ollama ─────────────────────────────────────────────────────────────────
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "qwen2.5:7b"
+OLLAMA_MODEL = "medgemma1.5:4b-it-q4_K_M"
 OLLAMA_TIMEOUT = httpx.Timeout(120.0, connect=10.0)
 
 # ── OpenFDA ────────────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ SESSION_TTL_SECONDS = 1800  # 30 minutes
 
 # ── Prompt guard ───────────────────────────────────────────────────────────
 
-# qwen2.5:7b has ~32K context.  We warn when the assembled prompt exceeds
+# medgemma1.5:4b-it-q4_K_M has ~32K context.  We warn when the assembled prompt exceeds
 # ~6000 tokens (≈ 4500 words for medical English).
 MAX_PROMPT_WORDS = 4500
 

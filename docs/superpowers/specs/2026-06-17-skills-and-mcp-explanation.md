@@ -90,7 +90,7 @@
 - Always use FastAPI (not Flask/Django)
 - Always use Next.js + React + Tailwind (not Vue/Svelte)
 - Always use live Wikipedia/OpenFDA APIs (no ChromaDB, FAISS, or any local vector database)
-- Always use Ollama with `qwen2.5:7b` (no cloud LLM APIs)
+- Always use Ollama with `medgemma1.5:4b-it-q4_K_M` (no cloud LLM APIs)
 - SSE for streaming (not WebSockets)
 - `httpx.AsyncClient` for all outbound HTTP
 - `[[CITATION:N]]` format for citations

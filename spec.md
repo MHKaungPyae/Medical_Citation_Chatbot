@@ -23,7 +23,7 @@ User → Next.js (:3000) → FastAPI (:8000) → Wikipedia / OpenFDA / Ollama
 | Frontend | Next.js 16 (App Router) + TypeScript + Tailwind CSS |
 | Backend | FastAPI + Python 3.12 |
 | Streaming | Server-Sent Events (SSE) over HTTP |
-| LLM | `qwen2.5:7b` via Ollama (local) |
+| LLM | `medgemma1.5:4b-it-q4_K_M` via Ollama (local) |
 | APIs | Wikipedia MediaWiki, OpenFDA Drug Label |
 | HTTP | `httpx` (async) |
 | Auth | Supabase Auth (JWT) + `python-jose` verification |
@@ -188,7 +188,7 @@ Phase 7 — Persist conversation
 
 ```
 POST http://localhost:11434/api/generate
-Body: {"model": "qwen2.5:7b", "prompt": "<assembled prompt>", "stream": true}
+Body: {"model": "medgemma1.5:4b-it-q4_K_M", "prompt": "<assembled prompt>", "stream": true}
 Timeout: 120s total, 10s connect
 ```
 
@@ -364,7 +364,7 @@ GET https://api.fda.gov/drug/label.json
 
 ```
 POST http://localhost:11434/api/generate
-Body: {"model": "qwen2.5:7b", "prompt": "...", "stream": true}
+Body: {"model": "medgemma1.5:4b-it-q4_K_M", "prompt": "...", "stream": true}
 → NDJSON stream: {"response": "token", "done": false} per line
 → Final: {"done": true}
 ```
@@ -381,7 +381,7 @@ All settings in `backend/config.py`:
 | Constant | Value | Notes |
 |----------|-------|-------|
 | `OLLAMA_URL` | `http://localhost:11434/api/generate` | |
-| `OLLAMA_MODEL` | `qwen2.5:7b` | |
+| `OLLAMA_MODEL` | `medgemma1.5:4b-it-q4_K_M` | |
 | `OLLAMA_TIMEOUT` | 120s total, 10s connect | |
 | `OPENFDA_ENDPOINT` | `https://api.fda.gov/drug/label.json` | |
 | `OPENFDA_TIMEOUT` | 10s total, 5s connect | |
@@ -394,6 +394,7 @@ All settings in `backend/config.py`:
 | `MAX_HISTORY_TURNS` | 6 | Conversation window |
 | `SESSION_TTL_SECONDS` | 1800 | 30 minutes |
 | `MAX_PROMPT_WORDS` | 4500 | ~6000 tokens; warn if exceeded |
+| `MAX_OUTPUT_TOKENS` | 4000 | Max output tokens from Ollama (~3000 words) |
 
 ---
 
@@ -460,6 +461,6 @@ All settings in `backend/config.py`:
 | **No unit tests** | Regression risk on edits | Manual curl testing |
 | **No evaluation baseline** | Cannot measure answer quality | Planned, not yet done |
 | **No frontend tests** | UI regression risk | Manual browser testing |
-| **Single model (qwen2.5:7b)** | No fallback if model unavailable | Connection error surfaced to user |
+| **Single model (medgemma1.5:4b-it-q4_K_M)** | No fallback if model unavailable | Connection error surfaced to user |
 | **Heuristic drug extraction** | May miss unusual drug names | 3-pass extraction (capitalized + all-caps + lowercase) catches most |
 | **No rate limiting** | OpenFDA has rate limits | Retry logic handles 429; no explicit client-side throttling |

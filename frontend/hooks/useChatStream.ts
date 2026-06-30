@@ -196,6 +196,14 @@ export function useChatStream({
                 : 'No live data found.'
             );
             break;
+          case 'info':
+            // Info events (e.g., "Looked up information on: paracetamol")
+            // Could be displayed as status, but we'll just log for now
+            console.info('[useChatStream]', data.message);
+            break;
+          case 'disclaimer':
+            // Medical disclaimer - already included in the response text
+            break;
         }
       }
     },

@@ -9,7 +9,7 @@
 cd backend
 source .venv/bin/activate
 pip install -r requirements.txt
-ollama pull qwen2.5:7b
+ollama pull medgemma1.5:4b-it-q4_K_M
 cd .. && find backend -type d -name __pycache__ -exec rm -rf {} + && PYTHONPATH=. uvicorn backend.main:app --reload --port 8000
 
 # Frontend
@@ -44,7 +44,7 @@ Phase 4: Citation metadata — build citation list from Wiki + FDA results
   ↓
 Phase 5: Build minimal prompt (context + "answer helpfully, cite [[CITATION:N]], include disclaimer")
   ↓
-Phase 6: Stream — citation metadata → info/warning → qwen2.5:7b token stream
+Phase 6: Stream — citation metadata → info/warning → medgemma1.5:4b-it-q4_K_M token stream
   ↓
 Phase 7: Persist conversation to session store
   ↓
@@ -68,9 +68,10 @@ Citation post-processing: normalise markers → filter used citations → done e
 | `backend/main.py` | FastAPI server, POST /api/chat SSE dispatch, session router, shutdown hooks |
 | `frontend/hooks/useChatController.ts` | Single hook: reducer + stream + session store + debounced persistence |
 | `frontend/hooks/useChatStream.ts` | SSE consumer (authenticatedFetch + ReadableStream + CRLF-safe parsing) |
-| `frontend/hooks/useChatReducer.ts` | 12-action useReducer for chat state |
+| `frontend/hooks/useChatReducer.ts` | 13-action useReducer for chat state |
 | `frontend/hooks/useSessionStore.ts` | API-backed sessions — CRUD via Supabase-authenticated fetch calls |
 | `frontend/hooks/useAuth.ts` | Supabase auth hook: signIn, signUp, signOut, getToken, onAuthStateChange |
+| `frontend/hooks/useScrollManager.ts` | Auto-scroll to bottom on new messages, scroll-to-latest button |
 | `frontend/lib/supabase.ts` | Supabase client singleton (env-var validated) |
 | `frontend/lib/api.ts` | `authenticatedFetch` — injects Supabase session JWT into requests |
 | `frontend/components/AuthProvider.tsx` | React context provider for auth state, exposes `useAuthContext()` |
@@ -84,6 +85,8 @@ Citation post-processing: normalise markers → filter used citations → done e
 | `frontend/components/CitationPill.tsx` | Rich citation pills below message (title, source, external link) |
 | `frontend/components/ErrorBoundary.tsx` | React error boundary — catches render crashes, shows recovery UI |
 | `frontend/components/Icons.tsx` | Shared icon components (Menu, Close, Trash, ChevronDown, Send, Stop, Spinner) |
+| `frontend/components/ui/liquid-glass-button.tsx` | Glassmorphism button (Radix Slot + CVA + tailwind-merge) |
+| `frontend/components/ui/shader-background.tsx` | WebGL animated shader canvas (full-page background) |
 
 ## Conventions
 
@@ -98,7 +101,7 @@ Citation post-processing: normalise markers → filter used citations → done e
 - **Environment variables:** Backend uses `load_dotenv()` in `config.py` to load `backend/.env`. Frontend uses `.env.local` for `NEXT_PUBLIC_SUPABASE_*` vars. Never commit `.env` files.
 - **Pycache:** Always run `find backend -type d -name __pycache__ -exec rm -rf {} +` after code changes before restarting uvicorn.
 - **Python deps:** Always activate the venv (`source backend/.venv/bin/activate`) before running anything.
-- **Deleted files:** `prompts.py`, `query_classifier.py`, `classifier_data.py`, `pubmed_client.py`, `semantic_scholar_client.py`, `rag_pipeline.py`, `rxnav_client.py` — do not recreate any of these.
+- **Deleted files:** `prompts.py`, `query_classifier.py`, `classifier_data.py`, `pubmed_client.py`, `semantic_scholar_client.py`, `rag_pipeline.py`, `rxnav_client.py`, `vision_client.py`, `storage_client.py` — do not recreate any of these.
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
