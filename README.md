@@ -1,6 +1,12 @@
 # 🩺 Medical Chatbot — Generative RAG
 
-A generative RAG chatbot that retrieves live data from **Wikipedia** and **OpenFDA**, feeds it to a local **medgemma1.5:4b-it-q4_K_M** model via **Ollama**, and streams cited responses to a React frontend. **Supabase** provides authentication and persistent session storage. No hardcoded prompts, no keyword classifiers — the LLM handles everything generatively.
+A generative RAG chatbot that retrieves live data from **Wikipedia** and **OpenFDA**, feeds it to a local **medgemma1.5:4b-it-q8_0** model via **Ollama**, and streams cited responses to a React frontend. **Supabase** provides authentication and persistent session storage. No hardcoded prompts, no keyword classifiers — the LLM handles everything generatively.
+
+## Screenshots
+
+| Register | Login | Home (with conversation) |
+|----------|-------|--------------------------|
+| ![Register page](screenshots/register-page.png) | ![Login page](screenshots/login-page.png) | ![Home page with chat](screenshots/home-page.png) |
 
 ## How It Works
 
@@ -9,7 +15,7 @@ A generative RAG chatbot that retrieves live data from **Wikipedia** and **OpenF
 3. Drug names are extracted heuristically from the query and Wikipedia text (no keyword lists)
 4. OpenFDA is queried concurrently for each drug — both Rx and OTC label fields are extracted
 5. A minimal prompt is built: context + "answer the question, cite sources, include disclaimer" — no hardcoded behavior rules
-6. medgemma1.5:4b-it-q4_K_M streams a response token-by-token via **Server-Sent Events (SSE)**
+6. medgemma1.5:4b-it-q8_0 streams a response token-by-token via **Server-Sent Events (SSE)**
 7. Frontend renders streaming text with `[[CITATION:N]]` markers as clickable inline `[Wikipedia ↗]` / `[FDA ↗]` tags
 
 ## Tech Stack
@@ -19,7 +25,7 @@ A generative RAG chatbot that retrieves live data from **Wikipedia** and **OpenF
 | **Frontend** | Next.js 16 (App Router) + TypeScript + Tailwind CSS |
 | **Backend** | FastAPI + Python 3.12 |
 | **Streaming** | Server-Sent Events (SSE) over HTTP |
-| **LLM** | medgemma1.5:4b-it-q4_K_M via Ollama (local, offline) |
+| **LLM** | medgemma1.5:4b-it-q8_0 via Ollama (local, offline) |
 | **Data Sources** | Wikipedia (MediaWiki API), OpenFDA Drug Label |
 | **HTTP Client** | httpx (async) |
 | **Auth** | Supabase Auth (JWT) + python-jose verification |
@@ -59,9 +65,8 @@ Medical_Citation_Chatbot/
 │   └── agents/                  # Subagent definitions
 ├── docs/                        # Development documentation and specs
 ├── plan/                        # Plans with phases
-├── slides/                      # Pitch deck (Marp)
+├── slides/                      # Pitch deck + product intro (Marp)
 ├── spec.md                      # System specification
-├── report.md                    # Project report
 ├── README.md                    # This file
 └── CLAUDE.md                    # Claude Code instructions
 ```
@@ -138,7 +143,9 @@ create policy "Users can create own messages" on messages for insert with check 
 ```bash
 SUPABASE_URL=https://<your-project>.supabase.co
 SUPABASE_KEY=<your-anon-key>
-SUPABASE_JWT_SECRET=<your-jwt-secret>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+OLLAMA_URL=http://localhost:11434/api/generate
+ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 ```
 
 **Frontend** — create `frontend/.env.local`:
@@ -163,7 +170,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # Pull the model
-ollama pull medgemma1.5:4b-it-q4_K_M
+ollama pull medgemma1.5:4b-it-q8_0
 ```
 
 ### 4. Setup Frontend
@@ -196,12 +203,12 @@ Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to 
 - 🤖 **Fully generative** — No hardcoded prompts, no keyword lists, no query classifier
 - 📎 **Clickable citations** — `[[CITATION:N]]` rendered as `[Wikipedia ↗]` (teal) / `[FDA ↗]` (amber) inline tags
 - ⚡ **Token-by-token streaming** — Responses appear as they're generated
-- 🧠 **Local model** — medgemma1.5:4b-it-q4_K_M runs entirely on your machine via Ollama
+- 🧠 **Local model** — medgemma1.5:4b-it-q8_0 runs entirely on your machine via Ollama
 - 🔐 **User authentication** — Supabase Auth with JWT tokens, login/register pages
 - 💾 **Persistent sessions** — Chat history stored in Supabase PostgreSQL, survives restarts
 - 🛑 **Cancel during streaming** — Stop generation mid-response, keep partial text
 - 📱 **Responsive** — Collapsible sidebar, mobile-friendly layout
-- 🎨 **Warm Wellness design** — Clean, calming color palette
+- 🎨 **Glassmorphism UI** — Dark theme with animated WebGL shader background and translucent glass effects
 - ♿ **Keyboard accessible** — Sidebar session items are `<button>` elements with aria labels
 
 ## SSE Wire Format
