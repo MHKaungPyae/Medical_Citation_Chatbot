@@ -61,7 +61,17 @@ async def _stream_ollama(prompt: str) -> AsyncGenerator[tuple[str, dict], None]:
         async with client.stream(
             "POST",
             OLLAMA_URL,
-            json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": True},
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": True,
+                "options": {
+                    "num_predict": MAX_OUTPUT_TOKENS,
+                    "temperature": 0.7,
+                    "top_p": 0.9,
+                    "repeat_penalty": 1.1,
+                },
+            },
         ) as response:
             response.raise_for_status()
             token_count = 0
