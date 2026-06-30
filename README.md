@@ -211,6 +211,25 @@ Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to 
 - 🎨 **Glassmorphism UI** — Dark theme with animated WebGL shader background and translucent glass effects
 - ♿ **Keyboard accessible** — Sidebar session items are `<button>` elements with aria labels
 
+## Known Limitations
+
+### Local Model Hosting (Ollama on Mac)
+
+The LLM runs locally via **Ollama** on the developer's Mac. The backend is hosted on **Render**, so an **ngrok tunnel** is required to bridge Render to the local Ollama instance.
+
+**Weaknesses:**
+
+- **Mac must be awake** — When the Mac sleeps, Ollama stops and the ngrok tunnel drops. All LLM requests from Render will fail until the Mac wakes up.
+- **Tunnel restart required** — After waking from sleep, the ngrok tunnel must restart. A macOS **LaunchAgent** (`~/Library/LaunchAgents/com.ngrok.ollama.plist`) auto-restarts it, but there is a brief window (~5–10 seconds) where requests will fail.
+- **Not truly 24/7** — Unlike a cloud-hosted model, availability depends on the developer's machine being on and connected to the internet.
+- **Single-user bottleneck** — The Mac's GPU/CPU handles all inference. Concurrent requests may queue or slow down.
+
+**Mitigation in place:**
+
+- Static ngrok domain (`petri-vastly-reclining.ngrok-free.dev`) — URL never changes, no Render reconfiguration needed on restart.
+- LaunchAgent with `KeepAlive` — auto-restarts ngrok on crash or wake from sleep.
+- `OLLAMA_BASE_URL` env var — easily switch between local (`http://localhost:11434`) and tunnel URLs.
+
 ## SSE Wire Format
 
 ```
