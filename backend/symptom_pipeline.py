@@ -522,10 +522,17 @@ async def run(query: str, session_id: str, user_id: str = "") -> AsyncGenerator[
             after = _think_buf[tags[1].end():]
             if after:
                 yield _sse_event("token", {"text": after})
-        elif len(tags) == 1 and "<unused" not in _think_buf[tags[0].end():]:
-            # Only one tag and no second one forming — not a thinking block
+        elif len(tags) == 0 and len(_think_buf) > 1000:
+            # No thinking tags after 1000+ chars — model isn't using thinking blocks
             _past_thinking = True
             yield _sse_event("token", {"text": _think_buf})
+        # else: keep buffering — waiting for more tokens or a second tag
+
+    # Flush any remaining buffered content (stream ended while still buffering)
+    if not _past_thinking and _think_buf:
+        cleaned_buf = _strip_thinking_tokens(_think_buf)
+        if cleaned_buf:
+            yield _sse_event("token", {"text": cleaned_buf})
 
     # 7e — strip thinking tokens, prompt leaks, citation post-processing + done
     full_text = _strip_thinking_tokens(full_text)

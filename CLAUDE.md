@@ -101,6 +101,7 @@ Citation post-processing: normalise markers → filter used citations → done e
 - **Environment variables:** Backend uses `load_dotenv()` in `config.py` to load `backend/.env`. Frontend uses `.env.local` for `NEXT_PUBLIC_SUPABASE_*` vars. Never commit `.env` files.
 - **Pycache:** Always run `find backend -type d -name __pycache__ -exec rm -rf {} +` after code changes before restarting uvicorn.
 - **Python deps:** Always activate the venv (`source backend/.venv/bin/activate`) before running anything.
+- **Git commits:** Do NOT add `Co-Authored-By: Claude` or any AI co-author trailers to commit messages. Commit messages should reflect only the human author.
 - **Deleted files:** `prompts.py`, `query_classifier.py`, `classifier_data.py`, `pubmed_client.py`, `semantic_scholar_client.py`, `rag_pipeline.py`, `rxnav_client.py`, `vision_client.py`, `storage_client.py` — do not recreate any of these.
 
 <!-- SPECKIT START -->
