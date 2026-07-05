@@ -8,6 +8,7 @@ import { useSessionStore } from '@/hooks/useSessionStore';
 export function useChatController() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
 
   const {
     sessions,
@@ -145,22 +146,31 @@ export function useChatController() {
   );
 
   const handleDeleteSession = useCallback(
-    async (sessionId: string) => {
+    (sessionId: string) => {
       const sessionTitle = sessions.find((s) => s.id === sessionId)?.title || 'this conversation';
-      // TODO: replace window.confirm with a React modal for accessibility and testability
-      if (!window.confirm(`Delete "${sessionTitle}"? This cannot be undone.`)) return;
-
-      await deleteSession(sessionId);
-      if (sessionId === activeSessionIdRef.current) {
-        const newId = await newSession();
-        setSessionId(newId);
-        clearChat(newId);
-        setInputValue('');
-        setSidebarOpen(false);
-      }
+      setPendingDelete({ id: sessionId, title: sessionTitle });
     },
-    [sessions, deleteSession, newSession, setSessionId, clearChat],
+    [sessions],
   );
+
+  const confirmDelete = useCallback(async () => {
+    if (!pendingDelete) return;
+    const { id } = pendingDelete;
+    setPendingDelete(null);
+
+    await deleteSession(id);
+    if (id === activeSessionIdRef.current) {
+      const newId = await newSession();
+      setSessionId(newId);
+      clearChat(newId);
+      setInputValue('');
+      setSidebarOpen(false);
+    }
+  }, [pendingDelete, deleteSession, newSession, setSessionId, clearChat]);
+
+  const cancelDelete = useCallback(() => {
+    setPendingDelete(null);
+  }, []);
 
   return {
     // sidebar
@@ -181,5 +191,8 @@ export function useChatController() {
     handleNewChat,
     handleSwitchSession,
     handleDeleteSession,
+    pendingDelete,
+    confirmDelete,
+    cancelDelete,
   };
 }

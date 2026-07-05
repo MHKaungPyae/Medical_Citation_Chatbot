@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import ChatContainer from '@/components/ChatContainer';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { IconMenu } from '@/components/Icons';
 import { useChatController } from '@/hooks/useChatController';
@@ -20,6 +21,7 @@ export default function Home() {
     inputValue, setInputValue,
     handleSend, handleStop, handleExampleClick,
     handleNewChat, handleSwitchSession, handleDeleteSession,
+    pendingDelete, confirmDelete, cancelDelete,
   } = useChatController();
 
   // Redirect to login if not authenticated
@@ -80,6 +82,16 @@ export default function Home() {
           />
         </div>
       </ErrorBoundary>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete conversation?"
+        message={`"${pendingDelete?.title}" will be permanently deleted. This cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+      />
     </div>
   );
 }
