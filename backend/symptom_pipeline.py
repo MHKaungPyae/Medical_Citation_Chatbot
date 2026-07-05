@@ -14,7 +14,7 @@ from typing import AsyncGenerator
 
 import httpx
 
-from backend.config import ErrorCode, MAX_OUTPUT_TOKENS, MAX_PROMPT_WORDS, OLLAMA_MODEL, OLLAMA_TIMEOUT, OLLAMA_URL
+from backend.config import ErrorCode, MAX_OUTPUT_TOKENS, MAX_PROMPT_WORDS, OLLAMA_MODEL, OLLAMA_NUM_CTX, OLLAMA_TIMEOUT, OLLAMA_URL, PROMPT_HARD_LIMIT_WORDS
 from backend.logging_setup import set_request_id
 from backend.openfda_client import search_openfda
 from backend.session_store import session_store
@@ -67,7 +67,7 @@ async def _stream_ollama(prompt: str) -> AsyncGenerator[tuple[str, dict], None]:
                 "stream": True,
                 "options": {
                     "num_predict": MAX_OUTPUT_TOKENS,
-                    "num_ctx": 16384,
+                    "num_ctx": OLLAMA_NUM_CTX,
                     "temperature": 0.7,
                     "top_p": 0.9,
                     "repeat_penalty": 1.1,
@@ -324,15 +324,18 @@ def _build_prompt(
 ) -> str:
     """Build the full prompt for the LLM — minimal, no hardcoded behavior rules."""
     parts: list[str] = []
+    context_indices: list[int] = []  # track which parts are trimmable context
 
     # Conversation history
     if conversation_history:
         parts.append("## PREVIOUS CONVERSATION\n" + conversation_history + "\n")
 
-    # Context
+    # Context (trimmable — these can be shortened if prompt is too long)
     if wiki_context:
+        context_indices.append(len(parts))
         parts.append("## WIKIPEDIA MEDICAL INFORMATION\n" + wiki_context + "\n")
     if fda_context:
+        context_indices.append(len(parts))
         parts.append("## FDA DRUG LABEL INFORMATION\n" + fda_context + "\n")
 
     if not wiki_context and not fda_context:
@@ -366,13 +369,38 @@ def _build_prompt(
     )
 
     prompt = "\n".join(parts)
-
     word_count = len(prompt.split())
+
     if word_count > MAX_PROMPT_WORDS:
         logger.warning(
             "Prompt is %d words (limit ~%d) — model may truncate context.",
             word_count, MAX_PROMPT_WORDS,
         )
+
+    # Hard-truncate context sections if prompt exceeds safe limit for num_ctx
+    if word_count > PROMPT_HARD_LIMIT_WORDS and context_indices:
+        excess_words = word_count - PROMPT_HARD_LIMIT_WORDS
+        # Trim from the last context section (FDA, then Wiki) backwards
+        for idx in reversed(context_indices):
+            if excess_words <= 0:
+                break
+            section_words = len(parts[idx].split())
+            # Keep the header line, trim the body
+            lines = parts[idx].split("\n", 1)
+            if len(lines) > 1:
+                header, body = lines[0], lines[1]
+                body_words = len(body.split())
+                trim = min(excess_words, body_words - 50)  # keep at least 50 words
+                if trim > 0:
+                    trimmed_body = " ".join(body.split()[: body_words - trim])
+                    parts[idx] = header + "\n" + trimmed_body + "\n\n[...truncated to fit context window...]"
+                    excess_words -= trim
+                    logger.warning(
+                        "Truncated context section at index %d by ~%d words to fit num_ctx=%d",
+                        idx, trim, OLLAMA_NUM_CTX,
+                    )
+
+        prompt = "\n".join(parts)
 
     return prompt
 

@@ -20,6 +20,7 @@ OLLAMA_BASE = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_URL = f"{OLLAMA_BASE}/api/generate"
 OLLAMA_MODEL = "medgemma1.5:4b-it-q8_0"
 OLLAMA_TIMEOUT = httpx.Timeout(120.0, connect=10.0)
+OLLAMA_NUM_CTX = 16384  # Reduced from default 32K to save RAM — covers ~6K prompt + 4K output
 
 # ── OpenFDA ────────────────────────────────────────────────────────────────
 
@@ -44,9 +45,11 @@ SESSION_TTL_SECONDS = 1800  # 30 minutes
 
 # ── Prompt guard ───────────────────────────────────────────────────────────
 
-# medgemma:4b has ~32K context.  We warn when the assembled prompt
-# exceeds ~6000 tokens (≈ 4500 words for medical English).
+# medgemma:4b has ~32K context, but we cap at OLLAMA_NUM_CTX (16K) to save RAM.
+# Warn when the assembled prompt exceeds ~6000 tokens (≈ 4500 words).
+# Hard-cap at ~7500 words to leave room for output within the 16K context.
 MAX_PROMPT_WORDS = 4500
+PROMPT_HARD_LIMIT_WORDS = 7500
 
 # Max output tokens from Ollama (≈ 3000 words). Prevents runaway generations.
 MAX_OUTPUT_TOKENS = 4000
