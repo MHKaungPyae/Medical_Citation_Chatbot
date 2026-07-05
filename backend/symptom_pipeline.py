@@ -354,18 +354,12 @@ def _build_prompt(
 
     # Answering guidance
     parts.append(
-        "Answer the user's question in a detailed, thorough manner. "
-        "Provide a comprehensive explanation covering causes, symptoms, treatments, "
-        "and any relevant medical context. Do not just list bullet points — write in "
-        "full paragraphs with clear explanations. "
-        "When the provided context contains relevant information, weave citations "
-        "naturally into your answer using the format [[CITATION:X]] where X matches "
-        "the citation number shown in the context. "
-        "Cite sources to support key claims, but do not let citations dominate your answer — "
-        "your goal is to give a helpful, well-explained response that a patient or "
-        "caregiver could understand. "
-        "Always end with a brief medical disclaimer reminding the reader to consult "
-        "a healthcare professional."
+        "Answer the user's question in detail using full paragraphs. "
+        "CRITICAL: You MUST cite sources by inserting [[CITATION:X]] markers "
+        "after sentences that use information from the context above. "
+        "X must match the CITATION number from the context (e.g. [[CITATION:1]]). "
+        "Place at least one citation per major claim. "
+        "End with a brief medical disclaimer."
     )
 
     prompt = "\n".join(parts)

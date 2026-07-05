@@ -9,6 +9,8 @@ export function useChatController() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
+  const pendingDeleteRef = useRef(pendingDelete);
+  pendingDeleteRef.current = pendingDelete;
 
   const {
     sessions,
@@ -158,11 +160,16 @@ export function useChatController() {
   );
 
   const confirmDelete = useCallback(async () => {
-    if (!pendingDelete) return;
-    const { id } = pendingDelete;
+    const pending = pendingDeleteRef.current;
+    if (!pending) return;
+    const { id } = pending;
     setPendingDelete(null);
 
-    await deleteSession(id);
+    try {
+      await deleteSession(id);
+    } catch (err) {
+      console.error('[useChatController] Failed to delete session:', err);
+    }
     if (id === activeSessionIdRef.current) {
       const newId = await newSession();
       setSessionId(newId);
@@ -170,7 +177,7 @@ export function useChatController() {
       setInputValue('');
       setSidebarOpen(false);
     }
-  }, [pendingDelete, deleteSession, newSession, setSessionId, clearChat]);
+  }, [deleteSession, newSession, setSessionId, clearChat]);
 
   const cancelDelete = useCallback(() => {
     setPendingDelete(null);
