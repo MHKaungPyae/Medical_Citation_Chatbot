@@ -24,8 +24,8 @@ export function renderTextWithCitations(
     citeMap.set(c.index, c);
   }
 
-  // Match both [[CITATION:N]] and [[CITATION N]] (space variant)
-  const markerPattern = /\[\[CITATION[: ](\d+)\]\]/g;
+  // Match [[CITATION:N]], [[CITATION N]], and [[CITATION: N]] variants
+  const markerPattern = /\[\[CITATION[:\s]+(\d+)\]\]/g;
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
