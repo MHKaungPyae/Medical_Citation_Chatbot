@@ -94,16 +94,8 @@ export function useSessionStore() {
               : s,
           );
         }
-        return [
-          {
-            id: sessionId,
-            title: truncatedTitle,
-            createdAt: now,
-            updatedAt: now,
-            messages,
-          },
-          ...prev,
-        ];
+        // Don't re-add sessions that were deleted from state
+        return prev;
       });
 
       // Update title on server

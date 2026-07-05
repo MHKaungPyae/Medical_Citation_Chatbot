@@ -165,6 +165,12 @@ export function useChatController() {
     const { id } = pending;
     setPendingDelete(null);
 
+    // Cancel any pending persist so it can't re-add the deleted session
+    if (persistTimerRef.current) {
+      clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
+    }
+
     try {
       await deleteSession(id);
     } catch (err) {
