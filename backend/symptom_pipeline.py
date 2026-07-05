@@ -42,7 +42,10 @@ def _get_ollama_client() -> httpx.AsyncClient:
     """Return a shared httpx.AsyncClient for Ollama requests."""
     global _ollama_client
     if _ollama_client is None:
-        _ollama_client = httpx.AsyncClient(timeout=OLLAMA_TIMEOUT)
+        _ollama_client = httpx.AsyncClient(
+            timeout=OLLAMA_TIMEOUT,
+            headers={"ngrok-skip-browser-warning": "true"},
+        )
     return _ollama_client
 
 
