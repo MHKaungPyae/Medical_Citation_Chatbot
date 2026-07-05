@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -11,6 +11,8 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
 }
+
+const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 export default function ConfirmDialog({
   open,
@@ -24,22 +26,62 @@ export default function ConfirmDialog({
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
 
-  // Focus the cancel button on open and trap focus
+  // Focus the cancel button on open
   useEffect(() => {
     if (open) {
-      cancelRef.current?.focus();
+      // Small delay to ensure dialog is in the DOM
+      const raf = requestAnimationFrame(() => cancelRef.current?.focus());
+      return () => cancelAnimationFrame(raf);
     }
   }, [open]);
 
-  // Close on Escape
+  // Focus trap + Escape handler
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (!dialogRef.current) return;
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onCancel();
+        return;
+      }
+
+      if (e.key !== 'Tab') return;
+
+      const focusable = dialogRef.current.querySelectorAll(FOCUSABLE);
+      if (focusable.length === 0) return;
+
+      const first = focusable[0] as HTMLElement;
+      const last = focusable[focusable.length - 1] as HTMLElement;
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    },
+    [onCancel],
+  );
+
   useEffect(() => {
     if (!open) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
-    };
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
-  }, [open, onCancel]);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, handleKeyDown]);
+
+  // Prevent body scroll when open
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
 
   if (!open) return null;
 

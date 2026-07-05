@@ -147,8 +147,12 @@ export function useChatController() {
 
   const handleDeleteSession = useCallback(
     (sessionId: string) => {
-      const sessionTitle = sessions.find((s) => s.id === sessionId)?.title || 'this conversation';
-      setPendingDelete({ id: sessionId, title: sessionTitle });
+      // Guard: ignore if a delete is already pending
+      setPendingDelete((prev) => {
+        if (prev) return prev;
+        const sessionTitle = sessions.find((s) => s.id === sessionId)?.title || 'this conversation';
+        return { id: sessionId, title: sessionTitle };
+      });
     },
     [sessions],
   );
