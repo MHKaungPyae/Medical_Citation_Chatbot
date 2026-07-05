@@ -147,6 +147,8 @@ async def delete_session(
     """Delete a session and all its messages."""
     db = get_supabase()
     _verify_ownership(db, session_id, current_user["id"])
+    # Delete messages first (foreign key constraint requires this)
+    db.table("messages").delete().eq("session_id", session_id).execute()
     db.table("chat_sessions").delete().eq("id", session_id).execute()
 
 
