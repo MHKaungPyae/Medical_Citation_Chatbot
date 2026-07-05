@@ -67,6 +67,7 @@ async def _stream_ollama(prompt: str) -> AsyncGenerator[tuple[str, dict], None]:
                 "stream": True,
                 "options": {
                     "num_predict": MAX_OUTPUT_TOKENS,
+                    "num_ctx": 16384,
                     "temperature": 0.7,
                     "top_p": 0.9,
                     "repeat_penalty": 1.1,
