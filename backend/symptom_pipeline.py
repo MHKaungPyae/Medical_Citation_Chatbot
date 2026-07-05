@@ -349,13 +349,20 @@ def _build_prompt(
         "\n--- END USER INPUT ---\n"
     )
 
-    # Minimal guidance
+    # Answering guidance
     parts.append(
-        "Answer the user's question helpfully using the provided context. "
-        "Be conversational, empathetic, and clear. "
-        "When citing a source, use the format [[CITATION:X]] where X is the citation number "
-        "(e.g. [[CITATION:1]], [[CITATION:2]]). The number must match the CITATION number shown in the context. "
-        "Include a brief medical disclaimer."
+        "Answer the user's question in a detailed, thorough manner. "
+        "Provide a comprehensive explanation covering causes, symptoms, treatments, "
+        "and any relevant medical context. Do not just list bullet points — write in "
+        "full paragraphs with clear explanations. "
+        "When the provided context contains relevant information, weave citations "
+        "naturally into your answer using the format [[CITATION:X]] where X matches "
+        "the citation number shown in the context. "
+        "Cite sources to support key claims, but do not let citations dominate your answer — "
+        "your goal is to give a helpful, well-explained response that a patient or "
+        "caregiver could understand. "
+        "Always end with a brief medical disclaimer reminding the reader to consult "
+        "a healthcare professional."
     )
 
     prompt = "\n".join(parts)
