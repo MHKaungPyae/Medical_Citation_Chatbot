@@ -43,6 +43,10 @@ WIKI_EXTRACT_CHARS = 800  # intro extract length
 MAX_HISTORY_TURNS = 6
 SESSION_TTL_SECONDS = 1800  # 30 minutes
 
+# ── Auth (Supabase JWT) ───────────────────────────────────────────────────
+
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
+
 # ── Prompt guard ───────────────────────────────────────────────────────────
 
 # medgemma:4b has ~32K context, but we cap at OLLAMA_NUM_CTX (16K) to save RAM.
@@ -61,12 +65,4 @@ class ErrorCode:
     INTERNAL_ERROR = "INTERNAL_ERROR"
     TIMEOUT = "TIMEOUT"
     CONNECTION_REFUSED = "CONNECTION_REFUSED"
-
-# ── Image Support ─────────────────────────────────────────────────────────
-MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
-SUPPORTED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
-
-# ── Supabase Storage ──────────────────────────────────────────────────────
-STORAGE_BUCKET = "chat-images"
-STORAGE_SIGNED_URL_EXPIRY = 86400  # 1 day
 

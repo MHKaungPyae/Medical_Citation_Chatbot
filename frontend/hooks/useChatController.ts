@@ -54,7 +54,10 @@ export function useChatController() {
     setStatus,
   });
 
-  // Bootstrap: load sessions from API, then create one if none exist
+  // Bootstrap: load sessions from API, then create one if none exist.
+  // NOTE: The deps array is safe because all callbacks use useCallback with []
+  // deps, making them stable references. The didBootstrap.current guard prevents
+  // re-execution even if React re-renders.
   const didBootstrap = useRef(false);
   useEffect(() => {
     if (didBootstrap.current) return;

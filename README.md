@@ -144,9 +144,12 @@ create policy "Users can create own messages" on messages for insert with check 
 SUPABASE_URL=https://<your-project>.supabase.co
 SUPABASE_KEY=<your-anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
-OLLAMA_URL=http://localhost:11434/api/generate
+SUPABASE_JWT_SECRET=<your-jwt-secret>
+OLLAMA_BASE_URL=http://localhost:11434
 ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 ```
+
+The JWT secret is in your Supabase dashboard under **Settings → API → JWT Secret**.
 
 **Frontend** — create `frontend/.env.local`:
 ```bash

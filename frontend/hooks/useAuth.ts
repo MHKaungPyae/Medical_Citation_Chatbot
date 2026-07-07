@@ -50,12 +50,7 @@ export function useAuth() {
     await supabase.auth.signOut();
   }, []);
 
-  const getToken = useCallback(async () => {
-    if (!session) return null;
-    return session.access_token;
-  }, [session]);
-
-  return { user, session, loading, signIn, signUp, signOut, getToken };
+  return { user, session, loading, signIn, signUp, signOut };
 }
 
 function mapUser(session: Session): AuthUser {

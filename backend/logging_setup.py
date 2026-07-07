@@ -1,7 +1,7 @@
 """Structured logging with request-ID injection.
 
 Every log line from any module carries a ``[request_id]`` column so a single
-user query can be traced across pubmed_client, openfda_client, and main.py
+user query can be traced across wiki_client, openfda_client, and main.py
 without threading a request-id parameter through every function signature.
 """
 

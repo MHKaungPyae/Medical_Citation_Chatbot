@@ -41,12 +41,16 @@ class SessionStore:
             lines.append(f"{role_label}: {msg['content']}")
         return "\n".join(lines)
 
-    async def save(self, session_id: str, role: str, content: str, user_id: str = "") -> None:
+    async def save(self, session_id: str, role: str, content: str, user_id: str) -> None:
         """Append a message to *session_id*. Creates session if it doesn't exist.
 
         Verifies the session belongs to *user_id* before writing. If the
         session does not exist, it is created with the given *user_id*.
         """
+        if not user_id:
+            logger.error("save() called with empty user_id — refusing to write")
+            return
+
         db = get_supabase()
 
         # Ensure session exists (create if missing) and verify ownership
@@ -64,7 +68,7 @@ class SessionStore:
         else:
             # Session exists — verify the caller owns it
             owner = existing.data[0].get("user_id", "")
-            if user_id and owner and owner != user_id:
+            if owner and owner != user_id:
                 logger.warning(
                     "Ownership mismatch: session %s belongs to %s, not %s",
                     session_id, owner, user_id,
@@ -79,24 +83,6 @@ class SessionStore:
             }).execute()
         except Exception as exc:
             logger.warning("Could not save message to session %s: %s", session_id, exc)
-
-    async def save_citations(self, session_id: str, citations_json: str) -> None:
-        """Update the last assistant message with citation data."""
-        db = get_supabase()
-        # Get the last assistant message for this session
-        result = (
-            db.table("messages")
-            .select("id")
-            .eq("session_id", session_id)
-            .eq("role", "assistant")
-            .order("created_at", desc=True)
-            .limit(1)
-            .execute()
-        )
-        if result.data:
-            db.table("messages").update({
-                "citations_json": citations_json,
-            }).eq("id", result.data[0]["id"]).execute()
 
     def reset(self) -> None:
         """No-op for compatibility. Use DB cleanup in tests."""

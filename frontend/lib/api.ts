@@ -20,7 +20,7 @@ export async function authenticatedFetch(
 
   // If 401, try refreshing the token once and retry
   if (response.status === 401) {
-    const { data: { session: refreshed } } = await supabase.auth.getSession();
+    const { data: { session: refreshed } } = await supabase.auth.refreshSession();
     if (refreshed?.access_token && refreshed.access_token !== session?.access_token) {
       const retryHeaders = new Headers(options.headers);
       retryHeaders.set('Authorization', `Bearer ${refreshed.access_token}`);

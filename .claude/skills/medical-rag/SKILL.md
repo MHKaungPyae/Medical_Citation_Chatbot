@@ -23,7 +23,7 @@ This skill enforces the architectural constraints of the Medical Chatbot. Loaded
 - **Supabase:** Hosted PostgreSQL for session/message persistence + Supabase Auth for JWT-based authentication. No local database.
 - **NO vector stores, NO ChromaDB, NO FAISS.** All retrieval is live from the web.
 
-### Pipeline (Generative — No Classifier, No Hardcoded Prompt)
+### Pipeline (Retrieve-Then-Generate — No Classifier, No Hardcoded Prompt)
 ```
 User query (any medical question — accepted unconditionally)
   ↓
@@ -62,7 +62,7 @@ Ollama medgemma1.5:4b-it-q8_0 → SSE stream (token|citation|done|error|warning|
 - `PYTHONPATH=.` when running from the project root.
 - `Retry-After` header parsing + exponential backoff for transient HTTP failures (via `retry.py`).
 - `authenticatedFetch` (from `frontend/lib/api.ts`) for all frontend→backend API calls — injects Supabase JWT.
-- Supabase Auth for user authentication — JWT verification in backend (`auth.py`), auth guard on frontend pages.
+- Supabase Auth for user authentication — local JWT verification via python-jose in backend (`auth.py`), auth guard on frontend pages.
 - `load_dotenv()` in `config.py` to load `backend/.env` — never hardcode credentials.
 
 ### Error Handling:

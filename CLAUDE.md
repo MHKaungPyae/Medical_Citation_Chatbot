@@ -29,7 +29,7 @@ User → Next.js (port 3000) → FastAPI (port 8000) → Wikipedia / OpenFDA / O
                           SSE: token | citation | done | error | warning | info
 ```
 
-### Pipeline Flow (No Classifier, No Hardcoded Prompt)
+### Pipeline Flow (Retrieve-Then-Generate)
 
 ```
 User query (any medical question — accepted unconditionally)
@@ -97,7 +97,7 @@ Citation post-processing: normalise markers → filter used citations → done e
 - **Streaming:** `_stream_ollama()` yields `(event_type, data_dict)` tuples — the caller serialises to SSE so full_text can be tracked without re-parsing.
 - **Logging:** Structured with `[request_id]` column via context var. Every `logger.info/warning` call is traceable.
 - **No hardcoded prompts:** `_build_prompt()` in `symptom_pipeline.py` is minimal — context sections + "answer helpfully, cite sources, include disclaimer". No system prompt, no role constraints.
-- **Supabase auth:** Backend verifies JWTs via `python-jose`. Frontend injects tokens via `authenticatedFetch` (`frontend/lib/api.ts`). All session routes require auth.
+- **Supabase auth:** Backend verifies JWTs locally via `python-jose` (no network call to Supabase). Frontend injects tokens via `authenticatedFetch` (`frontend/lib/api.ts`). All session routes require auth.
 - **Environment variables:** Backend uses `load_dotenv()` in `config.py` to load `backend/.env`. Frontend uses `.env.local` for `NEXT_PUBLIC_SUPABASE_*` vars. Never commit `.env` files.
 - **Pycache:** Always run `find backend -type d -name __pycache__ -exec rm -rf {} +` after code changes before restarting uvicorn.
 - **Python deps:** Always activate the venv (`source backend/.venv/bin/activate`) before running anything.
