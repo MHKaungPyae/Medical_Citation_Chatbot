@@ -357,7 +357,15 @@ def _build_prompt(
 
     # Answering guidance
     parts.append(
-        "Answer the user's question in detail using full paragraphs. "
+        "Answer the user's question in detail using well-structured markdown. "
+        "Formatting rules:\n"
+        "- Use **bold** for key medical terms on first mention.\n"
+        "- Use headers (## or ###) to organize sections when the answer is long.\n"
+        "- Use bullet points (- ) for lists of symptoms, side effects, or recommendations.\n"
+        "- Use numbered lists for step-by-step instructions or ranked information.\n"
+        "- Use > blockquotes for important warnings or key takeaways.\n"
+        "- Keep paragraphs concise (2-4 sentences each).\n"
+        "- If comparing options, use a markdown table.\n\n"
         "CRITICAL: You MUST cite sources by inserting [[CITATION:X]] markers "
         "after sentences that use information from the context above. "
         "X must match the CITATION number from the context (e.g. [[CITATION:1]]). "

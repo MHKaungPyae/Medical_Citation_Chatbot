@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @theme inline {
   --color-teal-primary: #14b8a6;
@@ -75,4 +76,47 @@ body {
 
 .chat-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--color-muted-warm);
+}
+
+/* Markdown prose overrides for chat bubbles */
+.chat-bubble-content .prose {
+  color: rgba(255, 255, 255, 0.9);
+}
+.chat-bubble-content .prose :first-child {
+  margin-top: 0;
+}
+.chat-bubble-content .prose :last-child {
+  margin-bottom: 0;
+}
+.chat-bubble-content .prose p {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+.chat-bubble-content .prose h2,
+.chat-bubble-content .prose h3 {
+  color: white;
+}
+.chat-bubble-content .prose strong {
+  color: white;
+}
+.chat-bubble-content .prose a {
+  color: var(--color-teal-light);
+}
+.chat-bubble-content .prose blockquote {
+  border-left-color: rgba(20, 184, 166, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.8);
+}
+.chat-bubble-content .prose code {
+  color: var(--color-teal-light);
+  background: rgba(255, 255, 255, 0.1);
+}
+.chat-bubble-content .prose table {
+  color: rgba(255, 255, 255, 0.85);
+}
+.chat-bubble-content .prose th {
+  color: rgba(255, 255, 255, 0.7);
+}
+.chat-bubble-content .prose hr {
+  border-color: rgba(255, 255, 255, 0.1);
 }
