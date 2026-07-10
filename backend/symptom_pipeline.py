@@ -442,7 +442,7 @@ async def run(query: str, session_id: str, user_id: str = "") -> AsyncGenerator[
 
     # If Wikipedia found nothing, try searching for the drug names directly
     if not wiki_articles and drug_names:
-        existing_ids: set[int] = {a["pageid"] for a in wiki_articles if a.get("pageid")}
+        existing_ids: set[int] = set()
         for name in drug_names[:2]:
             name_articles = await search_wikipedia(
                 f"{name} medication", max_results=2

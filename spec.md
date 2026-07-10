@@ -440,21 +440,7 @@ All settings in `backend/config.py`:
 
 ---
 
-## 8. Deleted / Unwired
-
-| Module | When | Why |
-|--------|------|-----|
-| `prompts.py` | 2026-06-17 | Hardcoded system prompt → replaced by minimal inline instruction |
-| `classifier_data.py` | 2026-06-17 | 589 drugs + 440 conditions → replaced by heuristic extraction |
-| `query_classifier.py` | 2026-06-17 | Keyword classifier → all queries now proceed |
-| `pubmed_client.py` | earlier | Poor relevance, XML overhead, API key required |
-| `semantic_scholar_client.py` | earlier | Severe 429 rate limiting |
-| `rag_pipeline.py` | earlier | Full redesign → `symptom_pipeline.py` |
-| `rxnav_client.py` | 2026-06-18 | Unwired, then deleted — heuristic extraction sufficient |
-
----
-
-## 9. Known Limitations
+## 8. Known Limitations
 
 | Issue | Impact | Mitigation |
 |-------|--------|------------|

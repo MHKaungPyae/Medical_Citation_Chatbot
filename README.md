@@ -189,7 +189,7 @@ Terminal 1 — Backend server:
 ```bash
 cd backend
 source .venv/bin/activate
-cd .. && PYTHONPATH=. uvicorn backend.main:app --reload --port 8000
+cd .. && find backend -type d -name __pycache__ -exec rm -rf {} + && PYTHONPATH=. uvicorn backend.main:app --reload --port 8000
 ```
 
 Terminal 2 — Frontend dev server:

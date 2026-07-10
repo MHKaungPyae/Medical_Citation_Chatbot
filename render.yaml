@@ -7,7 +7,9 @@ services:
     envVars:
       - key: PYTHONPATH
         value: "."
-      - key: OLLAMA_URL
+      - key: OLLAMA_BASE_URL
+        sync: false
+      - key: SUPABASE_JWT_SECRET
         sync: false
       - key: SUPABASE_URL
         sync: false

@@ -138,7 +138,7 @@ async def search_openfda(drug_name: str) -> dict[str, Any]:
         # Transient errors (429/5xx) — retry_get already exhausted retries
         logger.warning("OpenFDA exhausted retries for drug=%r", drug_name)
         return _not_found(drug_name)
-    except (httpx.TimeoutException, httpx.ConnectError, ValueError, Exception) as exc:
+    except Exception as exc:
         logger.warning("OpenFDA failed for drug=%r: %s", drug_name, exc)
         return _not_found(drug_name)
 

@@ -46,6 +46,8 @@ Phase 5: Build minimal prompt (context + "answer helpfully, cite [[CITATION:N]],
   ↓
 Phase 6: Stream — citation metadata → info/warning → medgemma1.5:4b-it-q8_0 token stream
   ↓
+Phase 6a: Strip thinking tokens — remove `<unusedN>...</unusedN>` MedGemma internal blocks
+  ↓
 Phase 7: Persist conversation to session store
   ↓
 Citation post-processing: normalise markers → filter used citations → done event
@@ -65,10 +67,10 @@ Citation post-processing: normalise markers → filter used citations → done e
 | `backend/routers/session_routes.py` | Session CRUD API (GET/POST/PATCH/DELETE), all auth-protected with ownership checks |
 | `backend/supabase_client.py` | Supabase client singleton (uses `SUPABASE_URL` + `SUPABASE_KEY` from env) |
 | `backend/logging_setup.py` | Structured logging with request-ID via context var |
-| `backend/main.py` | FastAPI server, POST /api/chat SSE dispatch, session router, shutdown hooks |
+| `backend/main.py` | FastAPI server, POST /api/chat SSE dispatch, GET /api/health, session router, shutdown hooks |
 | `frontend/hooks/useChatController.ts` | Single hook: reducer + stream + session store + debounced persistence |
 | `frontend/hooks/useChatStream.ts` | SSE consumer (authenticatedFetch + ReadableStream + CRLF-safe parsing) |
-| `frontend/hooks/useChatReducer.ts` | 13-action useReducer for chat state |
+| `frontend/hooks/useChatReducer.ts` | 12-action useReducer for chat state |
 | `frontend/hooks/useSessionStore.ts` | API-backed sessions — CRUD via Supabase-authenticated fetch calls |
 | `frontend/hooks/useAuth.ts` | Supabase auth hook: signIn, signUp, signOut, getToken, onAuthStateChange |
 | `frontend/hooks/useScrollManager.ts` | Auto-scroll to bottom on new messages, scroll-to-latest button |
@@ -84,6 +86,7 @@ Citation post-processing: normalise markers → filter used citations → done e
 | `frontend/components/InlineCitation.tsx` | Clickable source-labeled inline citation badges |
 | `frontend/components/CitationPill.tsx` | Rich citation pills below message (title, source, external link) |
 | `frontend/components/ErrorBoundary.tsx` | React error boundary — catches render crashes, shows recovery UI |
+| `frontend/components/ConfirmDialog.tsx` | Confirmation dialog for destructive actions (delete session) |
 | `frontend/components/Icons.tsx` | Shared icon components (Menu, Close, Trash, ChevronDown, Send, Stop, Spinner) |
 | `frontend/components/ui/liquid-glass-button.tsx` | Glassmorphism button (Radix Slot + CVA + tailwind-merge) |
 | `frontend/components/ui/shader-background.tsx` | WebGL animated shader canvas (full-page background) |

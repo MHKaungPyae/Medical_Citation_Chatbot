@@ -80,7 +80,7 @@ async def retry_get(
                     current_delay = min(retry_after, max_delay)
                 elif exc.response.status_code == 429:
                     # No Retry-After header — use a 10 s floor for rate-limit
-                    # windows that span minutes (Semantic Scholar free tier).
+                    # windows that span minutes.
                     current_delay = max(current_delay, 10.0)
                 logger.warning(
                     "%s attempt %d/%d: HTTP %d",

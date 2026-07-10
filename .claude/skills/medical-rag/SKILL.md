@@ -44,6 +44,8 @@ Citation metadata: build citation list from Wiki articles + FDA results
 Minimal prompt: context + "answer helpfully, cite [[CITATION:N]], include disclaimer"
   ↓
 Ollama medgemma1.5:4b-it-q8_0 → SSE stream (token|citation|done|error|warning|info)
+  ↓
+Strip thinking tokens: remove `<unusedN>...</unusedN>` MedGemma internal blocks
 ```
 
 ## Rules
@@ -91,8 +93,8 @@ Ollama medgemma1.5:4b-it-q8_0 → SSE stream (token|citation|done|error|warning|
   - `logging_setup.py` — structured logging with request-ID injection via contextvar
   - `__init__.py`
 - `frontend/` — Next.js 16 App Router + TypeScript + Tailwind CSS:
-  - `hooks/` — `useChatController`, `useChatReducer` (13 actions), `useChatStream`, `useSessionStore`, `useScrollManager`, `useAuth`
-  - `components/` — `ChatContainer` (React.memo), `MessageList`, `MessageBubble`, `InlineCitation`, `CitationPill`, `Sidebar`, `SendButton`, `AutoExpandTextarea`, `EmptyState`, `StatusBubble`, `StreamingDots`, `ErrorBoundary`, `Icons`, `AuthProvider`, `AuthCard`, `AuthInput`, `AuthButton`
+  - `hooks/` — `useChatController`, `useChatReducer` (12 actions), `useChatStream`, `useSessionStore`, `useScrollManager`, `useAuth`
+  - `components/` — `ChatContainer` (React.memo), `MessageList`, `MessageBubble`, `InlineCitation`, `CitationPill`, `Sidebar`, `SendButton`, `AutoExpandTextarea`, `EmptyState`, `StatusBubble`, `StreamingDots`, `ErrorBoundary`, `Icons`, `AuthProvider`, `AuthCard`, `AuthInput`, `AuthButton`, `ConfirmDialog`
   - `components/ui/` — `liquid-glass-button` (glassmorphism button, Radix Slot + CVA), `shader-background` (WebGL animated canvas)
   - `lib/` — `types.ts`, `constants.ts`, `utils.ts`, `supabase.ts`, `api.ts`
   - `app/login/` — login page
