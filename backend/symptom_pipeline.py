@@ -581,7 +581,11 @@ async def run(query: str, session_id: str, user_id: str = "") -> AsyncGenerator[
     # ── Phase 7: Persist conversation ───────────────────────────────────
     if session_id:
         await session_store.save(session_id, "user", query, user_id)
-        await session_store.save(session_id, "assistant", full_text, user_id)
+        used_citations = [c for c in citations if c["index"] in used_indices]
+        await session_store.save(
+            session_id, "assistant", full_text, user_id,
+            citations_json=json.dumps(used_citations) if used_citations else None,
+        )
 
     logger.info(
         "Response complete: tokens=%d citations=%d used=%d wiki=%d fda=%d",

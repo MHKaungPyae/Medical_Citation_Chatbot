@@ -41,7 +41,7 @@ class SessionStore:
             lines.append(f"{role_label}: {msg['content']}")
         return "\n".join(lines)
 
-    async def save(self, session_id: str, role: str, content: str, user_id: str) -> None:
+    async def save(self, session_id: str, role: str, content: str, user_id: str, citations_json: str | None = None) -> None:
         """Append a message to *session_id*. Creates session if it doesn't exist.
 
         Verifies the session belongs to *user_id* before writing. If the
@@ -76,11 +76,14 @@ class SessionStore:
                 return
 
         try:
-            db.table("messages").insert({
+            msg_data: dict = {
                 "session_id": session_id,
                 "role": role,
                 "content": content,
-            }).execute()
+            }
+            if citations_json:
+                msg_data["citations_json"] = citations_json
+            db.table("messages").insert(msg_data).execute()
         except Exception as exc:
             logger.warning("Could not save message to session %s: %s", session_id, exc)
 
