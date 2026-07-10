@@ -1,13 +1,13 @@
 """Supabase JWT verification for FastAPI.
 
-Verifies JWTs locally using python-jose — no network call to Supabase.
+Verifies JWTs locally using PyJWT — no network call to Supabase.
 """
 
 import logging
 from typing import Optional
 
 from fastapi import Header, HTTPException, status
-from jose import JWTError, jwt
+from jwt import ExpiredSignatureError, InvalidTokenError, decode as jwt_decode
 
 from backend.config import SUPABASE_JWT_SECRET
 
@@ -36,13 +36,13 @@ async def get_current_user(authorization: str = Header(...)) -> dict:
     jwt_secret = _get_jwt_secret()
 
     try:
-        payload = jwt.decode(
+        payload = jwt_decode(
             token,
             jwt_secret,
             algorithms=["HS256"],
             options={"verify_aud": False},
         )
-    except JWTError as exc:
+    except (InvalidTokenError, ExpiredSignatureError) as exc:
         logger.warning("JWT verification failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
