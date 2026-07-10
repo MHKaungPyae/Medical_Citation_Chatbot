@@ -486,7 +486,6 @@ async def run(query: str, session_id: str, user_id: str = "") -> AsyncGenerator[
             "url": fda_result.get("source_url", ""),
             "title": f"FDA Label: {drug_name}",
             "source": "fda",
-            "drug_name": drug_name,
         })
         cite_index += 1
 
@@ -572,16 +571,16 @@ async def run(query: str, session_id: str, user_id: str = "") -> AsyncGenerator[
     full_text = _strip_prompt_leaks(full_text)
     full_text = _normalize_citation_markers(full_text)
     used_indices = _extract_citations(full_text)
+    used_citations = [c for c in citations if c["index"] in used_indices]
 
     yield _sse_event("done", {
         "full_text": full_text,
-        "citations": [c for c in citations if c["index"] in used_indices],
+        "citations": used_citations,
     })
 
     # ── Phase 7: Persist conversation ───────────────────────────────────
     if session_id:
         await session_store.save(session_id, "user", query, user_id)
-        used_citations = [c for c in citations if c["index"] in used_indices]
         await session_store.save(
             session_id, "assistant", full_text, user_id,
             citations_json=json.dumps(used_citations) if used_citations else None,

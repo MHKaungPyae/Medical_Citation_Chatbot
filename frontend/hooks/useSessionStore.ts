@@ -29,7 +29,14 @@ async function fetchMessages(sessionId: string): Promise<Message[]> {
     id: m.id as string,
     role: m.role as 'user' | 'assistant',
     content: m.content as string,
-    citations: m.citations_json ? JSON.parse(m.citations_json as string) : [],
+    citations: (() => {
+      try {
+        return m.citations_json ? JSON.parse(m.citations_json as string) : [];
+      } catch {
+        console.warn(`[useSessionStore] Malformed citations_json for message ${m.id}`);
+        return [];
+      }
+    })(),
     status: 'done' as const,
   }));
 }

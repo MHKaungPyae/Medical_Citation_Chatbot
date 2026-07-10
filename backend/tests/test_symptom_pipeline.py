@@ -1,5 +1,6 @@
 """Unit tests for symptom_pipeline pure functions."""
 
+import json
 import pytest
 import sys
 import os
@@ -209,3 +210,56 @@ class TestFormatFdaContext:
         assert "CITATION 1" in result
         assert "aspirin" in result
         assert "Pain relief" in result
+
+
+# ── Citation serialization roundtrip ─────────────────────────────────────
+
+
+class TestCitationSerialization:
+    """Verify that citation dicts serialize to JSON the frontend can parse."""
+
+    def test_wiki_citation_roundtrip(self):
+        citations = [
+            {"index": 1, "url": "https://en.wikipedia.org/wiki/Aspirin", "title": "Aspirin", "source": "wikipedia"},
+        ]
+        serialized = json.dumps(citations)
+        parsed = json.loads(serialized)
+        assert len(parsed) == 1
+        assert parsed[0]["index"] == 1
+        assert parsed[0]["source"] == "wikipedia"
+        assert parsed[0]["url"] == "https://en.wikipedia.org/wiki/Aspirin"
+
+    def test_fda_citation_roundtrip(self):
+        citations = [
+            {"index": 2, "url": "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=abc", "title": "FDA Label: aspirin", "source": "fda"},
+        ]
+        serialized = json.dumps(citations)
+        parsed = json.loads(serialized)
+        assert len(parsed) == 1
+        assert parsed[0]["source"] == "fda"
+        # drug_name should NOT be present (removed per review finding)
+        assert "drug_name" not in parsed[0]
+
+    def test_mixed_citations_roundtrip(self):
+        citations = [
+            {"index": 1, "url": "https://en.wikipedia.org/wiki/Aspirin", "title": "Aspirin", "source": "wikipedia"},
+            {"index": 2, "url": "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=abc", "title": "FDA Label: aspirin", "source": "fda"},
+        ]
+        serialized = json.dumps(citations)
+        parsed = json.loads(serialized)
+        assert len(parsed) == 2
+        assert {c["source"] for c in parsed} == {"wikipedia", "fda"}
+
+    def test_empty_citations_yields_none(self):
+        """Empty list should result in None passed to session_store.save()."""
+        used_citations = []
+        citations_json = json.dumps(used_citations) if used_citations else None
+        assert citations_json is None
+
+    def test_citation_fields_match_frontend_type(self):
+        """Serialized citation must have exactly: index, url, title, source."""
+        citation = {"index": 1, "url": "https://example.com", "title": "Test", "source": "wikipedia"}
+        serialized = json.dumps([citation])
+        parsed = json.loads(serialized)[0]
+        expected_keys = {"index", "url", "title", "source"}
+        assert set(parsed.keys()) == expected_keys

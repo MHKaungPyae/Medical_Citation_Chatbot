@@ -81,7 +81,7 @@ class SessionStore:
                 "role": role,
                 "content": content,
             }
-            if citations_json:
+            if citations_json is not None:
                 msg_data["citations_json"] = citations_json
             db.table("messages").insert(msg_data).execute()
         except Exception as exc:
