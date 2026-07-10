@@ -1,3 +1,9 @@
+---
+name: medical-rag
+description: Enforces the architectural constraints of the Medical Citation Chatbot — FastAPI backend, Next.js frontend, Ollama LLM, SSE streaming, live web retrieval only.
+---
+<!-- vibekit:pack=core-vibe-coder -->
+
 # Medical Chatbot — Project Skill
 
 ## Purpose
