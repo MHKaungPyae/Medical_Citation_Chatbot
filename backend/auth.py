@@ -59,7 +59,7 @@ async def get_current_user(authorization: str = Header(...)) -> dict:
         payload = _jwt.decode(
             token,
             jwt_secret,
-            algorithms=["HS256"],
+            algorithms=["HS256", "ES256"],
             options={"verify_aud": False},
         )
     except Exception as exc:
