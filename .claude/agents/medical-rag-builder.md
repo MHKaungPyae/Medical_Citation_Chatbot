@@ -1,3 +1,16 @@
+---
+name: medical-rag-builder
+description: |
+  General-purpose subagent for building and maintaining the Medical Citation Chatbot.
+  Use it to implement new features, fix bugs, or refactor code across backend and frontend modules.
+tools: Read, Grep, Glob, Bash
+model: inherit
+permissionMode: default
+skills:
+  - medical-rag
+---
+<!-- vibekit:pack=core-vibe-coder -->
+
 # Medical RAG Builder — Subagent
 
 ## Purpose
