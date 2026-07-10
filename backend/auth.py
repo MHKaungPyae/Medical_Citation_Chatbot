@@ -6,7 +6,6 @@ Verifies JWTs locally using PyJWT — no network call to Supabase.
 import base64
 import json
 import logging
-from typing import Optional
 
 from fastapi import Header, HTTPException, status
 
@@ -16,38 +15,29 @@ from cryptography.hazmat.primitives.asymmetric.ec import (
     EllipticCurvePublicNumbers,
 )
 
-from backend.config import SUPABASE_JWT_SECRET
+from backend.config import SUPABASE_JWT_SECRET, SUPABASE_JWT_SIGNING_KEY
 
 logger = logging.getLogger(__name__)
 
-# Log which jwt module is loaded on startup
-logger.info("JWT module loaded from: %s", _jwt.__file__)
 
-
-def _build_ec_key(secret: str):
-    """Build an EC public key from a base64-encoded raw key (x || y coordinates)."""
-    raw = base64.b64decode(secret)
-    x = int.from_bytes(raw[:32], "big")
-    y = int.from_bytes(raw[32:], "big")
+def _build_ec_key_from_jwk(jwk_json: str):
+    """Build an EC public key from a JWK JSON string."""
+    jwk = json.loads(jwk_json)
+    # Handle both single key and {"keys": [...]} format
+    key_data = jwk["keys"][0] if "keys" in jwk else jwk
+    x = int.from_bytes(base64.urlsafe_b64decode(key_data["x"] + "=="), "big")
+    y = int.from_bytes(base64.urlsafe_b64decode(key_data["y"] + "=="), "big")
     return EllipticCurvePublicNumbers(x, y, SECP256R1()).public_key()
 
 
-# Pre-build the EC key at import time
+# Pre-build the EC key at import time from JWK signing key
 _EC_KEY = None
-try:
-    _EC_KEY = _build_ec_key(SUPABASE_JWT_SECRET)
-    logger.info("EC public key built from SUPABASE_JWT_SECRET")
-except Exception as e:
-    logger.warning("Could not build EC key (will use raw secret for HS256): %s", e)
-
-logger = logging.getLogger(__name__)
-
-
-def _get_jwt_secret() -> str:
-    """Return the Supabase JWT secret."""
-    if not SUPABASE_JWT_SECRET:
-        raise RuntimeError("Missing SUPABASE_JWT_SECRET environment variable.")
-    return SUPABASE_JWT_SECRET
+if SUPABASE_JWT_SIGNING_KEY:
+    try:
+        _EC_KEY = _build_ec_key_from_jwk(SUPABASE_JWT_SIGNING_KEY)
+        logger.info("EC public key built from SUPABASE_JWT_SIGNING_KEY")
+    except Exception as e:
+        logger.warning("Could not build EC key from signing key: %s", e)
 
 
 async def get_current_user(authorization: str = Header(...)) -> dict:
@@ -62,26 +52,29 @@ async def get_current_user(authorization: str = Header(...)) -> dict:
         )
 
     token = authorization[7:]
-    jwt_secret = _get_jwt_secret()
 
-    # Debug: decode header to see algorithm
+    # Decode header to determine algorithm
+    header = {}
     try:
         header_b64 = token.split(".")[0]
-        # Fix base64 padding
         padding = 4 - len(header_b64) % 4
         if padding != 4:
             header_b64 += "=" * padding
         header = json.loads(base64.urlsafe_b64decode(header_b64))
-        logger.info("JWT header: %s", header)
-    except Exception as e:
-        logger.warning("Could not decode JWT header: %s", e)
+    except Exception:
+        pass
 
     # Choose key based on algorithm
-    alg = header.get("alg", "") if header else ""
+    alg = header.get("alg", "")
     if alg == "ES256" and _EC_KEY is not None:
         key = _EC_KEY
+    elif SUPABASE_JWT_SECRET:
+        key = SUPABASE_JWT_SECRET
     else:
-        key = jwt_secret
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No JWT verification key configured.",
+        )
 
     try:
         payload = _jwt.decode(

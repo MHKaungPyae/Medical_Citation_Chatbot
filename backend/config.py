@@ -46,6 +46,7 @@ SESSION_TTL_SECONDS = 1800  # 30 minutes
 # ── Auth (Supabase JWT) ───────────────────────────────────────────────────
 
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
+SUPABASE_JWT_SIGNING_KEY = os.getenv("SUPABASE_JWT_SIGNING_KEY", "")
 
 # ── Prompt guard ───────────────────────────────────────────────────────────
 
