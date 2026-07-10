@@ -2,7 +2,7 @@ services:
   - type: web
     name: medical-chatbot-backend
     runtime: python
-    buildCommand: pip install -r backend/requirements.txt
+    buildCommand: pip uninstall -y python-jose && pip install -r backend/requirements.txt
     startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHONPATH
