@@ -28,7 +28,6 @@ function CitationBadge({ citation }: { citation: Citation }) {
       target="_blank"
       rel="noopener noreferrer"
       className={`inline-flex items-center gap-0.5 no-underline mx-0.5 rounded-full px-1.5 py-px text-[11px] font-medium transition-all hover:ring-2 hover:ring-offset-1 ${colorClasses}`}
-      title={citation.title}
     >
       {label} ↗
     </a>
@@ -46,15 +45,23 @@ function renderMarkdownWithCitations(
     citeMap.set(c.index, c);
   }
 
-  const markerPattern = /\[\[CITATION:(\d+)\]\]/g;
+  // Pre-normalize: catch bracket variations the backend may have missed
+  // [CITATION:N]], [[CITATION:N]], [CITATION N]] → [[CITATION:N]]
+  const normalized = content.replace(
+    /\[?CITATION[:\s]+(\d+)\]?\]?/g,
+    '[[$1]]',
+  );
+
+  // Match [[CITATION:N]] (normalized form)
+  const markerPattern = /\[\[(\d+)\]\]/g;
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
-  while ((match = markerPattern.exec(content)) !== null) {
+  while ((match = markerPattern.exec(normalized)) !== null) {
     // Text before this marker → render as markdown
     if (match.index > lastIndex) {
-      const segment = content.slice(lastIndex, match.index);
+      const segment = normalized.slice(lastIndex, match.index);
       parts.push(
         <Markdown key={`md-${lastIndex}`} remarkPlugins={[remarkGfm]}>
           {segment}
@@ -75,8 +82,8 @@ function renderMarkdownWithCitations(
   }
 
   // Remaining text after the last marker
-  if (lastIndex < content.length) {
-    const segment = content.slice(lastIndex);
+  if (lastIndex < normalized.length) {
+    const segment = normalized.slice(lastIndex);
     parts.push(
       <Markdown key={`md-${lastIndex}`} remarkPlugins={[remarkGfm]}>
         {segment}

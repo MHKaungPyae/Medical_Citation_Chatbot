@@ -156,7 +156,8 @@ def _normalize_citation_markers(text: str) -> str:
     # Only match standalone parenthesized numbers (1)-(99) that look like
     # citation markers — not "(5 mg)", "(see page 3)", etc.
     text = re.sub(r"(?<![a-zA-Z])\((\d{1,2})\)(?![a-zA-Z/%])", r"[[CITATION:\1]]", text)
-    text = re.sub(r"\[\[CITATION[:\s]+(\d+)\]\]", r"[[CITATION:\1]]", text)
+    # Normalize various bracket styles: [[CITATION:N]], [CITATION:N]], [[CITATION N]]
+    text = re.sub(r"\[?CITATION[:\s]+(\d+)\]?\]?", r"[[CITATION:\1]]", text)
     # Strip literal [[CITATION:N]] — LLM copied the template literally
     text = text.replace("[[CITATION:N]]", "")
     text = text.replace("[[CITATION: N]]", "")
