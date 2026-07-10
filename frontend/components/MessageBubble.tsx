@@ -27,11 +27,24 @@ function CitationBadge({ citation }: { citation: Citation }) {
       href={citation.url}
       target="_blank"
       rel="noopener noreferrer"
-      className={`inline-flex items-center gap-0.5 no-underline mx-0.5 rounded-full px-1.5 py-px text-[11px] font-medium transition-all hover:ring-2 hover:ring-offset-1 ${colorClasses}`}
+      data-citation="true"
+      className={`inline-flex items-center gap-0.5 no-underline !mx-0.5 !rounded-full !px-1.5 !py-px text-[11px] !font-medium transition-all hover:ring-2 hover:ring-offset-1 ${colorClasses}`}
     >
       {label} ↗
     </a>
   );
+}
+
+// ── Custom paragraph: skip wrapper when it only contains a citation badge ─
+
+function CiteParagraph({ children }: { children: React.ReactNode }) {
+  // If paragraph contains only a single CitationBadge, render without <p>
+  const only =
+    React.Children.count(children) === 1 &&
+    React.isValidElement(children) &&
+    (children.props as Record<string, unknown>).dataCitation === 'true';
+  if (only) return <>{children}</>;
+  return <p>{children}</p>;
 }
 
 // ── Render markdown content with inline citation badges ───────────────────
@@ -45,23 +58,31 @@ function renderMarkdownWithCitations(
     citeMap.set(c.index, c);
   }
 
-  // Pre-normalize: catch bracket variations the backend may have missed
-  // [CITATION:N]], [[CITATION:N]], [CITATION N]] → [[CITATION:N]]
-  const normalized = content.replace(
-    /\[?CITATION[:\s]+(\d+)\]?\]?/g,
-    '[[$1]]',
+  // Step 1: strip newlines inside citation markers
+  // Model sometimes outputs [[\nCITATION:1]] which breaks matching
+  let text = content.replace(/\[\s*CITATION\s*:\s*(\d+)\s*\]/g, '[CITATION:$1]');
+
+  // Step 2: normalize ALL bracket variations → [[CITATION:N]]
+  // Handles: [[CITATION:N]], [CITATION:N]], CITATION:N]], [[CITATION N]], etc.
+  text = text.replace(
+    /\[?\[?CITATION[:\s]+(\d+)\]?\]?/g,
+    '[[CITATION:$1]]',
   );
 
-  // Match [[CITATION:N]] (normalized form)
-  const markerPattern = /\[\[(\d+)\]\]/g;
+  // Step 3: strip literal template markers the model copied
+  text = text.replace(/\[\[CITATION:N\]\]/g, '');
+  text = text.replace(/\[\[CITATION: N\]\]/g, '');
+
+  // Step 4: split on [[CITATION:N]] and render each chunk through markdown
+  const markerPattern = /\[\[CITATION:(\d+)\]\]/g;
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
-  while ((match = markerPattern.exec(normalized)) !== null) {
+  while ((match = markerPattern.exec(text)) !== null) {
     // Text before this marker → render as markdown
     if (match.index > lastIndex) {
-      const segment = normalized.slice(lastIndex, match.index);
+      const segment = text.slice(lastIndex, match.index);
       parts.push(
         <Markdown key={`md-${lastIndex}`} remarkPlugins={[remarkGfm]}>
           {segment}
@@ -82,8 +103,8 @@ function renderMarkdownWithCitations(
   }
 
   // Remaining text after the last marker
-  if (lastIndex < normalized.length) {
-    const segment = normalized.slice(lastIndex);
+  if (lastIndex < text.length) {
+    const segment = text.slice(lastIndex);
     parts.push(
       <Markdown key={`md-${lastIndex}`} remarkPlugins={[remarkGfm]}>
         {segment}

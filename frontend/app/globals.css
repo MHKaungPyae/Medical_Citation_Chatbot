@@ -120,3 +120,21 @@ body {
 .chat-bubble-content .prose hr {
   border-color: rgba(255, 255, 255, 0.1);
 }
+
+/* Force citation badge text to be visible — override prose-a styles */
+.chat-bubble-content a[data-citation] {
+  display: inline-flex !important;
+  align-items: center !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+}
+.chat-bubble-content a[data-citation="true"].bg-teal-light {
+  color: #0f766e !important;
+  background-color: #d4f7f0 !important;
+}
+.chat-bubble-content a[data-citation="true"].bg-amber-light {
+  color: #92400e !important;
+  background-color: #fef3c7 !important;
+}
